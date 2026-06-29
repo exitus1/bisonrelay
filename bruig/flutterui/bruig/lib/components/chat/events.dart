@@ -168,7 +168,7 @@ class _ReceivedSentPMState extends State<ReceivedSentPM> {
 
   void messageSecondaryTapContext(
       TapDownDetails details, String msg, String fullDate, String nick) {
-    var toCopy = "$fullDate $nick - $msg";
+    var toCopy = msg;
     _contextMenuController.show(
       context: context,
       contextMenuBuilder: (context) {
@@ -194,7 +194,7 @@ class _ReceivedSentPMState extends State<ReceivedSentPM> {
 
   void messageLongDownContext(
       LongPressDownDetails details, String msg, String fullDate, String nick) {
-    var toCopy = "$fullDate $nick - $msg";
+    var toCopy = msg;
     _contextMenuController.show(
       context: context,
       contextMenuBuilder: (context) {
@@ -316,7 +316,7 @@ class _ReceivedSentPMState extends State<ReceivedSentPM> {
                                       top: 5, left: 10, right: 10, bottom: 5),
                                   decoration: BoxDecoration(
                                     color: isOwnMessage
-                                        ? theme.colors.surfaceContainer
+                                        ? const Color(0xFF0D1A3D)
                                         : theme.colors.surfaceContainerHighest,
                                     borderRadius: BorderRadius.circular(10),
                                   ),

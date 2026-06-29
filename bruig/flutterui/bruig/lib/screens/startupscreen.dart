@@ -25,15 +25,10 @@ class StartupScreen extends StatelessWidget {
         body: Consumer<ThemeNotifier>(
             builder: (context, theme, child) => Container(
                 decoration: const BoxDecoration(
-                    image: DecorationImage(
-                  alignment: Alignment.topRight,
-                  fit: BoxFit.fitHeight,
-                  image: AssetImage("assets/images/loading-bg.png"),
-                )),
+                    color: Color(0xFF060606)),
                 child: Stack(children: [
                   Container(
                       alignment: Alignment.center,
-                      decoration: theme.fullTheme.startupScreenBoxDecoration,
                       padding: const EdgeInsets.all(30),
                       child: SingleChildScrollView(
                           child: childrenWidth != null

@@ -34,9 +34,8 @@ ButtonStyle raisedButtonStyle(ThemeNotifier theme) {
   return ElevatedButton.styleFrom(
     padding: const EdgeInsets.only(left: 34, top: 10, right: 34, bottom: 10),
     minimumSize: const Size(150, 55),
-    foregroundColor: theme.colors.onPrimaryContainer,
-    backgroundColor: theme.colors.primaryContainer,
-    //padding: EdgeInsets.symmetric(horizontal: 16),
+    foregroundColor: const Color(0xFF060606),
+    backgroundColor: const Color(0xFFFFFFFF),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(30)),
     ),

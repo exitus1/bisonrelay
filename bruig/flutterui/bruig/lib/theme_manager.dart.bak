@@ -417,148 +417,56 @@ final appThemes = {
       key: "dark",
       descr: "Dark Theme",
       data: ThemeData.from(
-        // useMaterial3: true,
+        // Base Material3 color scheme based on seed
+        useMaterial3: true,
         textTheme: _interTextTheme,
-        colorScheme: ColorScheme(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF19172C),
           brightness: Brightness.dark,
-          primary: const Color(0xFF2DD8A3),
-          onPrimary: const Color(0xFF060606),
-          primaryContainer: const Color(0xFF0D2E24),
-          onPrimaryContainer: const Color(0xFF2DD8A3),
-          secondary: const Color(0xFF2970FF),
-          onSecondary: const Color(0xFFFFFFFF),
-          secondaryContainer: const Color(0xFF0D1A3D),
-          onSecondaryContainer: const Color(0xFF6B9FFF),
-          tertiary: const Color(0xFF1A9E78),
-          onTertiary: const Color(0xFFFFFFFF),
-          tertiaryContainer: const Color(0xFF0A1F18),
-          onTertiaryContainer: const Color(0xFF2DD8A3),
-          error: const Color(0xFFFF3B30),
-          onError: const Color(0xFFFFFFFF),
-          errorContainer: const Color(0xFF3D0F0F),
-          onErrorContainer: const Color(0xFFFF3B30),
-          surface: const Color(0xFF060606),
-          onSurface: const Color(0xFFE8E8E8),
-          surfaceContainerLowest: const Color(0xFF060606),
-          surfaceContainerLow: const Color(0xFF0D0D0D),
-          surfaceContainer: const Color(0xFF111111),
-          surfaceContainerHigh: const Color(0xFF161616),
-          surfaceContainerHighest: const Color(0xFF1C1C1C),
-          surfaceBright: const Color(0xFF222222),
-          surfaceDim: const Color(0xFF060606),
-          onSurfaceVariant: const Color(0xFF666666),
-          inverseSurface: const Color(0xFFE8E8E8),
-          onInverseSurface: const Color(0xFF060606),
-          inversePrimary: const Color(0xFF1A9E78),
-          outline: const Color(0xFF2A2A2A),
-          outlineVariant: const Color(0xFF1A1A1A),
-          primaryFixed: const Color(0xFF2DD8A3),
-          primaryFixedDim: const Color(0xFF1A9E78),
-          onPrimaryFixed: const Color(0xFF060606),
-          onPrimaryFixedVariant: const Color(0xFF060606),
-          secondaryFixed: const Color(0xFF2970FF),
-          secondaryFixedDim: const Color(0xFF1A4FCC),
-          onSecondaryFixed: const Color(0xFFFFFFFF),
-          onSecondaryFixedVariant: const Color(0xFFFFFFFF),
-          tertiaryFixed: const Color(0xFF1A9E78),
-          tertiaryFixedDim: const Color(0xFF0D6B50),
-          onTertiaryFixed: const Color(0xFFFFFFFF),
-          onTertiaryFixedVariant: const Color(0xFFFFFFFF),
-          scrim: const Color(0xFF000000),
-          shadow: const Color(0xFF000000),
+
+          // Color scheme customizations
+          onSurfaceVariant: Colors.grey[600],
+          // ignore: deprecated_member_use
+          background: const Color(
+              0xFF19172C), // Same as surface, will be removed in the future.
+          surface: const Color(0xFF19172C),
+          surfaceContainerLow: const Color(0xFF17152A),
+          surfaceContainerLowest: const Color(0xFF161429),
         ),
       ).copyWith(
+        // Bruig theme customizations.
         listTileTheme: ListTileThemeData(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-          selectedTileColor: const Color(0xFF0D2E24),
-          iconColor: const Color(0xFF666666),
-          selectedColor: const Color(0xFF2DD8A3),
-        ),
-        dividerTheme: const DividerThemeData(
-          color: Color(0xFF161616),
-          thickness: 1,
-        ),
-        hintColor: const Color(0xFF444444),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF060606),
-          foregroundColor: Color(0xFFE8E8E8),
-          scrolledUnderElevation: 0,
-          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
+          selectedTileColor: Colors.grey[850],
+          iconColor: const Color(0xFFe5e1e9), // onSurface
         ),
 
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFF0D0D0D),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: const BorderSide(color: Color(0xFF2A2A2A), width: 1),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: const BorderSide(color: Color(0xFF2A2A2A), width: 1),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: const BorderSide(color: Color(0xFF2DD8A3), width: 1),
-          ),
-          hintStyle: const TextStyle(color: Color(0xFF444444)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        hintColor: const Color(0xFF47464f), // onSurfaceVariant
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF19172C), // suface color.
+          scrolledUnderElevation:
+              0, // Disable the scroll shadow effect on appbar
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2DD8A3),
-            foregroundColor: const Color(0xFF060606),
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFF2DD8A3),
-            side: const BorderSide(color: Color(0xFF2DD8A3), width: 1),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF2DD8A3),
-          ),
-        ),
-        iconTheme: const IconThemeData(
-          color: Color(0xFF666666),
-          size: 20,
-        ),
-        disabledColor: const Color(0xFF2A2A2A),
-        splashColor: const Color(0xFF2DD8A3).withValues(alpha: 0.08),
-        highlightColor: const Color(0xFF2DD8A3).withValues(alpha: 0.04),
+
+        disabledColor: Colors.grey[850],
       ),
-      extraColors: CustomColors(
-        sidebarDivider: const Color(0xFF111111),
-        successOnSurface: const Color(0xFF2DD8A3),
-        selectedItemOnSurfaceListView: const Color(0xFF2DD8A3),
-      ),
+      extraColors: const CustomColors(),
       extraTextStyles: const CustomTextStyles(
         chatListGcIndicator: TextStyle(
           fontStyle: FontStyle.italic,
-          fontSize: 11,
-          color: Color(0xFF444444),
+          color: Color(0xFF47464f), // onSurfaceVariant
         ),
-        lightAvatarInitial: TextStyle(fontSize: 16, color: Color(0xFF060606)),
-        darkAvatarInitial: TextStyle(fontSize: 16, color: Color(0xFFE8E8E8)),
-        lightAvatarInitialLarge: TextStyle(fontSize: 50, color: Color(0xFF060606)),
-        darkAvatarInitialLarge: TextStyle(fontSize: 50, color: Color(0xFFE8E8E8)),
       ),
       startupScreenBoxDecoration: BoxDecoration(
           gradient: LinearGradient(
         begin: Alignment.bottomLeft,
         end: Alignment.topRight,
         colors: [
-          const Color(0xFF060606),
-          const Color(0xFF060606),
-          const Color(0xFF2DD8A3).withValues(alpha: 0.06),
+          const Color(0xFF19172C), // surface
+          const Color(0xFF19172C).withValues(alpha: 0.85),
+          const Color(0xFF19172C).withValues(alpha: 0.34),
         ],
-        stops: const [0, 0.6, 1],
+        stops: const [0, 0.37, 1],
       ))),
   "light": AppTheme(
       key: "light",
