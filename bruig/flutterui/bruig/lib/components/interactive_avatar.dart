@@ -6,7 +6,47 @@ import 'package:bruig/models/client.dart';
 import 'package:bruig/util.dart';
 import 'package:flutter/material.dart';
 import 'package:bruig/theme_manager.dart';
+import 'package:bruig/storage_manager.dart';
 import 'package:provider/provider.dart';
+
+// Monochrome (graphite) avatar fallback. When `monochromeAvatars` is true,
+// contacts WITHOUT a set avatar image get a deterministic graphite shade
+// instead of the colorful hashed hue. A real avatar image is never overridden.
+// A Settings toggle (added separately) flips this notifier; default is on.
+const String kMonochromeAvatarsKey = "monochromeAvatars";
+final ValueNotifier<bool> monochromeAvatars = ValueNotifier<bool>(true);
+bool _monoLoaded = false;
+
+// Load the saved preference once (default on). Safe to call from build.
+Future<void> ensureMonochromeLoaded() async {
+  if (_monoLoaded) return;
+  _monoLoaded = true;
+  monochromeAvatars.value =
+      await StorageManager.readBool(kMonochromeAvatarsKey, defaultVal: true);
+}
+
+// Flip + persist (called from the Settings toggle).
+Future<void> setMonochromeAvatars(bool v) async {
+  monochromeAvatars.value = v;
+  await StorageManager.saveBool(kMonochromeAvatarsKey, v);
+}
+
+const List<Color> _graphitePalette = [
+  Color(0xFF363B3A),
+  Color(0xFF3A4048),
+  Color(0xFF40433F),
+  Color(0xFF383F44),
+  Color(0xFF44423F),
+  Color(0xFF3C4441),
+];
+
+Color graphiteFromNick(String nick) {
+  var h = 0;
+  for (final c in nick.codeUnits) {
+    h = (h * 31 + c) & 0x7fffffff;
+  }
+  return _graphitePalette[h % _graphitePalette.length];
+}
 
 class InteractiveAvatar extends StatelessWidget {
   const InteractiveAvatar(
@@ -27,9 +67,15 @@ class InteractiveAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    ensureMonochromeLoaded();
     var nickInitial = chatNick.isNotEmpty ? chatNick[0].toUpperCase() : "?";
-    return Consumer<ThemeNotifier>(builder: (context, theme, _) {
-      var avatarColor = colorFromNick(chatNick, theme.brightness);
+    return ValueListenableBuilder<bool>(
+      valueListenable: monochromeAvatars,
+      builder: (context, mono, __) =>
+          Consumer<ThemeNotifier>(builder: (context, theme, _) {
+      var avatarColor = mono
+          ? graphiteFromNick(chatNick)
+          : colorFromNick(chatNick, theme.brightness);
       var avatarTextTs =
           ThemeData.estimateBrightnessForColor(avatarColor) == Brightness.dark
               ? (radius != null && radius! >= 100)
@@ -63,7 +109,8 @@ class InteractiveAvatar extends StatelessWidget {
                         : SelectionContainer.disabled(
                             child: Text(nickInitial, style: avatarTextTs)))),
       );
-    });
+    }),
+    );
   }
 }
 

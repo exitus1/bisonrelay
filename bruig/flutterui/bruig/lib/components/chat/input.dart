@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:bruig/components/attach_file.dart';
+import 'package:bruig/components/pay_tip.dart';
 import 'package:bruig/components/snackbars.dart';
 import 'package:bruig/models/emoji.dart';
 import 'package:bruig/components/icons.dart';
@@ -354,6 +355,9 @@ class _ChatInputState extends State<ChatInput> {
           onChanged: (value) {
             widget.chat.workingMsg = value;
 
+            // Rebuild so the send arrow glows neon when there's text.
+            setState(() {});
+
             // Check if user is typing an emoji code (:foo:).
             TypingEmojiSelModel.of(context, listen: false)
                 .maybeSelectEmojis(controller);
@@ -385,7 +389,7 @@ class _ChatInputState extends State<ChatInput> {
               borderRadius: BorderRadius.all(Radius.circular(30.0)),
               borderSide: BorderSide(width: 2.0),
             ),
-            hintText: "Start a message",
+            hintText: "Message ${widget.chat.nick}",
             prefixIcon: IconButton(
               focusNode: FocusNode(canRequestFocus: false, skipTraversal: true),
               onPressed: _toggleEmojiPanel,
@@ -399,6 +403,22 @@ class _ChatInputState extends State<ChatInput> {
                     IconButton(
                         onPressed: attachFile,
                         icon: const Icon(Icons.attach_file)),
+                  if (!widget.chat.isGC &&
+                      (!isScreenSmall || controller.text == ""))
+                    IconButton(
+                        padding: const EdgeInsets.all(0),
+                        tooltip: "Pay tip",
+                        onPressed: () =>
+                            showPayTipModalBottom(context, widget.chat),
+                        icon: Icon(Icons.bolt,
+                            color: const Color(0xFF1DFF8C),
+                            shadows: [
+                              Shadow(
+                                color: const Color(0xFF1DFF8C)
+                                    .withValues(alpha: 0.55),
+                                blurRadius: 8,
+                              ),
+                            ])),
                   if (containsUnkxdMembers &&
                       (!isScreenSmall || controller.text == ""))
                     const Tooltip(
@@ -412,7 +432,10 @@ class _ChatInputState extends State<ChatInput> {
                       padding: const EdgeInsets.all(0),
                       iconSize: 20,
                       onPressed: sendMsg,
-                      icon: const Icon(Icons.send))
+                      icon: Icon(Icons.send,
+                          color: controller.text.trim().isNotEmpty
+                              ? const Color(0xFF1DFF8C)
+                              : null))
                 ]),
           ),
         ),

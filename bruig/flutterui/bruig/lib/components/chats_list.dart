@@ -18,6 +18,7 @@ import 'package:bruig/components/gc_context_menu.dart';
 import 'package:bruig/components/chat/types.dart';
 import 'package:bruig/theme_manager.dart';
 import 'package:golib_plugin/golib_plugin.dart';
+import 'package:golib_plugin/definitions.dart';
 import 'package:file_picker/file_picker.dart';
 
 class _ChatHeadingW extends StatefulWidget {
@@ -65,31 +66,120 @@ class _ChatHeadingWState extends State<_ChatHeadingW> {
     super.dispose();
   }
 
+  // Cheap last-message preview: first loaded message event's text.
+  // Blank for chats whose history isn't loaded this session (zero risk).
+  // Prefix "You: " for your own messages; in group chats, prefix the
+  // sender's nick so you can tell who said what. (source == null => local user.)
+  // Replace --embed[...]-- markers with a clean label based on their type,
+  // so previews show "Audio note" / "Image" instead of raw embed markup.
+  String _cleanEmbeds(String src) {
+    return src.replaceAllMapped(RegExp(r'--embed\[(.*?)\]--'), (m) {
+      final attrs = m.group(1) ?? '';
+      final type = RegExp(r'type=([^,\]]+)').firstMatch(attrs)?.group(1) ?? '';
+      if (type.startsWith('image/')) return 'Image';
+      if (type.startsWith('audio/')) return 'Audio note';
+      if (type.startsWith('video/')) return 'Video';
+      return 'File';
+    });
+  }
+
+  String? _lastMsgPreview() {
+    // Unsent draft takes priority in the preview.
+    final draft = chat.workingMsg.trim();
+    if (draft.isNotEmpty) return "Draft: ${draft.replaceAll('\n', ' ')}";
+    for (final e in chat.msgs) {
+      if (e.isMessage) {
+        final t = _cleanEmbeds(e.event.msg).trim().replaceAll('\n', ' ');
+        if (t.isEmpty) continue;
+        if (e.source == null) return "You: $t";
+        if (chat.isGC) {
+          final who = e.source!.nick;
+          if (who.isNotEmpty) return "$who: $t";
+        }
+        return t;
+      }
+    }
+    return null;
+  }
+
+  // Relative time of the last loaded message: HH:MM if today, else 3d / 2w / date.
+  // Mirrors BR's own seconds-vs-millis handling (source?.nick == null => local ms).
+  String _lastMsgTime() {
+    for (final e in chat.msgs) {
+      if (!e.isMessage) continue;
+      if (e.event.msg.trim().isEmpty) continue;
+      final ev = e.event;
+      int raw;
+      if (ev is PM) {
+        raw = ev.timestamp;
+      } else if (ev is GCMsg) {
+        raw = ev.timestamp;
+      } else {
+        continue;
+      }
+      final ms = e.source?.nick == null ? raw : raw * 1000;
+      final dt = DateTime.fromMillisecondsSinceEpoch(ms);
+      final diff = DateTime.now().difference(dt);
+      // Under 24h -> exact time the message was sent.
+      if (diff.inHours < 24) {
+        return "${dt.hour.toString().padLeft(2, '0')}:"
+            "${dt.minute.toString().padLeft(2, '0')}";
+      }
+      final days = diff.inDays;
+      if (days < 7) return "${days}d";
+      if (days < 28) return "${(days / 7).floor()}w";
+      return "${dt.month}/${dt.day}";
+    }
+    return "";
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Show 1k+ if unread cound goes about 1000
+    // --- Redesign tokens ---
+    const blue = Color(0xFF4D9FFF); // you / unread / search
+    const green = Color(0xFF1DFF8C); // live / selected
+    const nickColor = Color(0xFFE6EAE8);
+    const previewMuted = Color(0xFF9AA3A0);
+    const previewBright = Color(0xFFCED4D2);
+    const selectedTint = Color(0x141DFF8C); // faint green wash
+
+    final isActive = chat.active;
+    final hasUnread = chat.unreadMsgCount > 0 || chat.unreadEventCount > 0;
+
+    // Show 1k+ if unread count goes above 1000
     var unreadCount = chat.unreadMsgCount > 1000 ? "1k+" : chat.unreadMsgCount;
 
     Widget unreadIndicator;
     if (chat.unreadMsgCount > 0) {
-      // Show unread message count.
+      // Unread message count -> blue badge.
       unreadIndicator = Container(
         margin: const EdgeInsets.all(1),
-        child: CircleAvatar(radius: 10, child: Txt.S("$unreadCount")),
+        child: CircleAvatar(
+          radius: 10,
+          backgroundColor: blue,
+          child: Text(
+            "$unreadCount",
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF07101D),
+            ),
+          ),
+        ),
       );
     } else if (chat.unreadEventCount > 0) {
-      // Show only a dot indicator.
+      // Blue dot indicator.
       unreadIndicator = Container(
         margin: const EdgeInsets.all(1),
-        child: const CircleAvatar(radius: 3),
+        child: const CircleAvatar(radius: 3, backgroundColor: blue),
       );
     } else {
-      // Show nothing.
       unreadIndicator = const SizedBox(width: 21);
     }
 
     var popMenuButton = InteractiveAvatar(
       chatNick: chat.nick,
+      radius: 23,
       onTap: () {
         widget.makeActive(chat);
         widget.showSubMenu();
@@ -97,6 +187,108 @@ class _ChatHeadingWState extends State<_ChatHeadingW> {
       avatar: chat.avatar.image,
       toolTip: true,
     );
+
+    // Nick (plain Text so we can use our blue when active).
+    final nickWidget = Text(
+      chat.nick,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: hasUnread
+            ? FontWeight.w700
+            : (isActive ? FontWeight.w600 : FontWeight.w500),
+        color: isActive ? blue : nickColor,
+      ),
+    );
+
+    // Last-message preview subtitle (null -> no subtitle).
+    final preview = _lastMsgPreview();
+    final Widget? subtitleWidget = preview == null
+        ? null
+        : Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(
+              preview,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.25,
+                color: hasUnread ? previewBright : previewMuted,
+                fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
+              ),
+            ),
+          );
+
+    // Last-message time + trailing column (time on top, unread badge below).
+    final timeStr = _lastMsgTime();
+    Widget trailingWith(Widget bottom) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (timeStr.isNotEmpty) ...[
+            Text(
+              timeStr,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                color: hasUnread ? blue : const Color(0xFF5F6764),
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
+          bottom,
+        ],
+      );
+    }
+
+    // Rounded card. Inactive: plain rounded. Active: a green left edge that
+    // FOLLOWS the rounded left corners (layered: green base + inner card inset
+    // 3px on the left), plus a soft green glow.
+    Widget wrapSelected(Widget tile) {
+      const radius = 14.0;
+      if (!isActive) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(radius),
+            child: tile,
+          ),
+        );
+      }
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: blue.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: [
+            BoxShadow(
+              color: blue.withValues(alpha: 0.15),
+              blurRadius: 10,
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Padding(
+          // Reveal the green base as a curved left edge.
+          padding: const EdgeInsets.only(left: 3),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.horizontal(
+              left: Radius.circular(radius - 3),
+              right: Radius.circular(radius),
+            ),
+            child: Container(
+              color: const Color(0xFF0B0F16), // opaque dark-blue selected bg
+              child: tile,
+            ),
+          ),
+        ),
+      );
+    }
+
     bool isScreenSmall = checkIsScreenSmall(context);
     return Consumer<ThemeNotifier>(
       builder: (context, theme, _) => Container(
@@ -109,20 +301,18 @@ class _ChatHeadingWState extends State<_ChatHeadingW> {
                       }
                     : null,
                 targetGcChat: chat,
-                child: ListTile(
+                child: wrapSelected(ListTile(
                   horizontalTitleGap: 12,
                   contentPadding: const EdgeInsets.only(
                     left: 10,
                     right: 8,
                   ),
+                  minVerticalPadding: 20,
                   enabled: true,
-                  title: Txt(
-                    chat.nick,
-                    overflow: TextOverflow.ellipsis,
-                    color: TextColor.onSurfaceVariant,
-                  ),
+                  title: nickWidget,
+                  subtitle: subtitleWidget,
                   leading: popMenuButton,
-                  trailing: Row(
+                  trailing: trailingWith(Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
@@ -132,33 +322,33 @@ class _ChatHeadingWState extends State<_ChatHeadingW> {
                       const SizedBox(width: 5),
                       unreadIndicator,
                     ],
-                  ),
-                  selected: chat.active,
+                  )),
+                  selected: isActive,
+                  selectedTileColor: Colors.transparent,
                   onTap: () => widget.makeActive(chat),
-                ),
+                )),
               )
             : UserContextMenu(
                 client: client,
                 targetUserChat: chat,
-                child: ListTile(
+                child: wrapSelected(ListTile(
                   tileColor: isActiveRTC ? Colors.green.shade600 : null,
-                  selectedTileColor: isActiveRTC ? Colors.green.shade600 : null,
+                  selectedTileColor:
+                      isActiveRTC ? Colors.green.shade600 : Colors.transparent,
                   horizontalTitleGap: 12,
                   contentPadding: const EdgeInsets.only(
                     left: 10,
                     right: 8,
                   ),
+                  minVerticalPadding: 20,
                   enabled: true,
-                  title: Txt(
-                    chat.nick,
-                    overflow: TextOverflow.ellipsis,
-                    color: TextColor.onSurfaceVariant,
-                  ),
+                  title: nickWidget,
+                  subtitle: subtitleWidget,
                   leading: popMenuButton,
-                  trailing: unreadIndicator,
-                  selected: chat.active,
+                  trailing: trailingWith(unreadIndicator),
+                  selected: isActive,
                   onTap: () => widget.makeActive(chat),
-                ),
+                )),
               ),
       ),
     );
@@ -295,6 +485,9 @@ class _ActiveChatsListMenuState extends State<ActiveChatsListMenu>
   UnmodifiableListView<ChatModel> chats = UnmodifiableListView([]);
   Timer? debounce;
   ScrollController sortedListScroll = ScrollController();
+
+  // Width of the resizable contact list pane (drag the divider to resize).
+  double _listWidth = 320;
 
   void doUpdateState() {
     if (mounted) {
@@ -467,8 +660,13 @@ class _ActiveChatsListMenuState extends State<ActiveChatsListMenu>
 
     // Desktop version, display side menu.
     return Consumer<ThemeNotifier>(
-      builder: (context, theme, _) => SecondarySideMenuList(
-        width: 205 * (theme.fontScale > 0 ? theme.fontScale : 1),
+      builder: (context, theme, _) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SecondarySideMenuList(
+              width: _listWidth,
         list: ListView.builder(
           controller: sortedListScroll,
           scrollDirection: Axis.vertical,
@@ -524,7 +722,33 @@ class _ActiveChatsListMenuState extends State<ActiveChatsListMenu>
             ],
           ),
         ),
-      ),
+            ),
+            // Drag divider: drag to resize, double-tap to reset width.
+            MouseRegion(
+              cursor: SystemMouseCursors.resizeLeftRight,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onHorizontalDragUpdate: (d) {
+                  setState(() {
+                    _listWidth =
+                        (_listWidth + d.delta.dx).clamp(220.0, 560.0).toDouble();
+                  });
+                },
+                onDoubleTap: () => setState(() => _listWidth = 320),
+                child: const SizedBox(
+                  width: 8,
+                  child: Center(
+                    child: SizedBox(
+                      width: 1,
+                      child: ColoredBox(color: Color(0xFF262A27)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

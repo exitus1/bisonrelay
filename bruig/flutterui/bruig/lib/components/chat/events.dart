@@ -317,8 +317,14 @@ class _ReceivedSentPMState extends State<ReceivedSentPM> {
                                   decoration: BoxDecoration(
                                     color: isOwnMessage
                                         ? const Color(0xFF0D1A3D)
-                                        : theme.colors.surfaceContainerHighest,
-                                    borderRadius: BorderRadius.circular(10),
+                                        : const Color(0xFF111311),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isOwnMessage
+                                          ? const Color(0xFF26416E)
+                                          : const Color(0xFF1F231F),
+                                      width: 1,
+                                    ),
                                   ),
                                   child: Column(
                                       crossAxisAlignment: isOwnMessage

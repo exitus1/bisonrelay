@@ -289,42 +289,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     // Desktop-sized version.
+    Widget navItem(String page, IconData icon) {
+      final sel = settingsPage == page;
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        child: Material(
+          color: sel ? const Color(0xFF101826) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () =>
+                page == "RPC" ? showRpcWarningDialog() : changePage(page),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(children: [
+                Icon(icon,
+                    size: 19,
+                    color: sel
+                        ? const Color(0xFF4D9FFF)
+                        : const Color(0xFF9AA3A0)),
+                const SizedBox(width: 12),
+                Text(page,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: sel ? FontWeight.w600 : FontWeight.w500,
+                      color: sel
+                          ? const Color(0xFFE6EAE8)
+                          : const Color(0xFF9AA3A0),
+                    )),
+              ]),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Row(children: [
-      Consumer<ThemeNotifier>(
-          builder: (context, theme, _) => SecondarySideMenuList(
-                  width: 130 * (theme.fontScale > 0 ? theme.fontScale : 1),
-                  items: [
-                    ListTile(
-                      selected: settingsPage == "Account",
-                      title: const Txt.S("Account"),
-                      onTap: () => changePage("Account"),
-                    ),
-                    ListTile(
-                      selected: settingsPage == "Appearance",
-                      title: const Txt.S("Appearance"),
-                      onTap: () => changePage("Appearance"),
-                    ),
-                    ListTile(
-                      selected: settingsPage == "Notifications",
-                      title: const Txt.S("Notifications"),
-                      onTap: () => changePage("Notifications"),
-                    ),
-                    ListTile(
-                      selected: settingsPage == "Network",
-                      title: const Txt.S("Network"),
-                      onTap: () => changePage("Network"),
-                    ),
-                    ListTile(
-                      selected: settingsPage == "Audio",
-                      title: const Txt.S("Audio"),
-                      onTap: () => changePage("Audio"),
-                    ),
-                    ListTile(
-                      selected: settingsPage == "RPC",
-                      title: const Txt.S("RPC"),
-                      onTap: () => showRpcWarningDialog(),
-                    ),
-                  ])),
+      Container(
+        width: 200,
+        decoration: const BoxDecoration(
+          border: Border(right: BorderSide(color: Color(0xFF1C1F1D))),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          children: [
+            navItem("Account", Icons.person_outline),
+            navItem("Appearance", Icons.palette_outlined),
+            navItem("Notifications", Icons.notifications_outlined),
+            navItem("Network", Icons.public),
+            navItem("Audio", Icons.volume_up_outlined),
+            navItem("RPC", Icons.terminal),
+          ],
+        ),
+      ),
       Expanded(child: settingsView),
     ]);
   }
@@ -565,6 +583,17 @@ class _AppearanceSettingsScreenState extends State<AppearanceSettingsScreen> {
             onTap: () => _showSelectTextSizeDialog(context, theme),
             leading: const Icon(Icons.text_increase),
             title: const Text("Message font size")),
+        ValueListenableBuilder<bool>(
+          valueListenable: monochromeAvatars,
+          builder: (context, mono, _) => SwitchListTile(
+            secondary: const Icon(Icons.account_circle_outlined),
+            title: const Text("Monochrome avatars"),
+            subtitle: const Text(
+                "Use graphite fallback avatars instead of colored initials"),
+            value: mono,
+            onChanged: (v) => setMonochromeAvatars(v),
+          ),
+        ),
         if (kDebugMode) ...[
           ListTile(
               title: const Text("Widget Test Screen"),
