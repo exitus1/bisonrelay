@@ -408,7 +408,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
             ActiveChatsListMenu(client, inputFocusNode, rtc),
             Expanded(
                 child: Container(
-              margin: const EdgeInsets.all(1),
+              decoration: const BoxDecoration(
+                border: Border(
+                  left: BorderSide(color: Color(0xFF2F3336), width: 1),
+                ),
+              ),
               child: ActiveChat(client, rtc, audio, inputFocusNode),
             )),
           ])

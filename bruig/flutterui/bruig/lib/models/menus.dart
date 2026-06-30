@@ -17,6 +17,7 @@ import 'package:bruig/models/uploads.dart';
 import 'package:bruig/screens/chat/new_gc_screen.dart';
 import 'package:bruig/screens/chat/new_message_screen.dart';
 import 'package:bruig/screens/chats.dart';
+import 'package:bruig/screens/cms_invoice.dart';
 import 'package:bruig/screens/feed.dart';
 import 'package:bruig/screens/gc_invitations.dart';
 import 'package:bruig/screens/ln_management.dart';
@@ -147,6 +148,13 @@ final List<MainMenuItem> mainMenu = [
           builder: (context, client, child) => PayStatsScreen(client)),
       (context) => const PayStatsScreenTitle(),
       const SidebarSvgIcon("assets/icons/icons-menu-stats.svg"),
+      <SubMenuInfo>[]),
+  MainMenuItem(
+      "CMS",
+      CmsInvoiceScreen.routeName,
+      (context) => const CmsInvoiceScreen(),
+      (context) => const CmsInvoiceScreenTitle(),
+      const SidebarIcon(Icons.receipt_long_rounded, false),
       <SubMenuInfo>[]),
   MainMenuItem(
       "Settings",

@@ -665,9 +665,37 @@ class _ActiveChatsListMenuState extends State<ActiveChatsListMenu>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            SecondarySideMenuList(
-              width: _listWidth,
-        list: ListView.builder(
+            SizedBox(
+              width: _listWidth + 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Always-visible search bar -> opens user/GC search.
+                  GestureDetector(
+                    onTap: gotoNewMessage,
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(10, 12, 10, 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 11),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D0E0D),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF1C1F1D)),
+                      ),
+                      child: const Row(children: [
+                        Icon(Icons.search,
+                            size: 18, color: Color(0xFF5F6764)),
+                        SizedBox(width: 10),
+                        Text("Search or start a chat",
+                            style: TextStyle(
+                                fontSize: 13.5, color: Color(0xFF5F6764))),
+                      ]),
+                    ),
+                  ),
+                  Expanded(
+                    child: SecondarySideMenuList(
+                      width: _listWidth,
+                      list: ListView.builder(
           controller: sortedListScroll,
           scrollDirection: Axis.vertical,
           itemCount: chats.length,
@@ -722,6 +750,10 @@ class _ActiveChatsListMenuState extends State<ActiveChatsListMenu>
             ],
           ),
         ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             // Drag divider: drag to resize, double-tap to reset width.
             MouseRegion(
@@ -740,7 +772,7 @@ class _ActiveChatsListMenuState extends State<ActiveChatsListMenu>
                   child: Center(
                     child: SizedBox(
                       width: 1,
-                      child: ColoredBox(color: Color(0xFF262A27)),
+                      child: ColoredBox(color: Color(0xFF2F3336)),
                     ),
                   ),
                 ),

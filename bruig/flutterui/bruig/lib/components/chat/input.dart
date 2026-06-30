@@ -35,6 +35,7 @@ class ChatInput extends StatefulWidget {
 
 class _ChatInputState extends State<ChatInput> {
   final controller = TextEditingController();
+  final MenuController _fmtMenuCtl = MenuController();
 
   late AudioModel audio;
   List<AttachmentEmbed> embeds = [];
@@ -323,6 +324,66 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   @override
+  // Wrap the current selection (or insert at the cursor) with markdown markers,
+  // then place the cursor sensibly and keep focus in the input.
+  void wrapSelection(String left, String right) {
+    final text = controller.text;
+    final sel = controller.selection;
+    var start = sel.start;
+    var end = sel.end;
+    if (start < 0 || end < 0) {
+      start = text.length;
+      end = text.length;
+    }
+    final selected = text.substring(start, end);
+    final newText = text.substring(0, start) +
+        left +
+        selected +
+        right +
+        text.substring(end);
+    final innerStart = start + left.length;
+    final innerEnd = innerStart + selected.length;
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection(baseOffset: innerStart, extentOffset: innerEnd),
+    );
+    widget.chat.workingMsg = newText;
+    setState(() {});
+    widget.inputFocusNode.inputFocusNode.requestFocus();
+  }
+
+  // Insert a markdown link [label](url), selecting the url placeholder.
+  void insertLink() {
+    final text = controller.text;
+    final sel = controller.selection;
+    var start = sel.start;
+    var end = sel.end;
+    if (start < 0 || end < 0) {
+      start = text.length;
+      end = text.length;
+    }
+    final selected = text.substring(start, end);
+    final label = selected.isEmpty ? "text" : selected;
+    const url = "url";
+    final newText = text.substring(0, start) +
+        "[$label]($url)" +
+        text.substring(end);
+    final urlStart = start + 1 + label.length + 2; // skip past opening bracket+label+bracket+paren
+    final urlEnd = urlStart + url.length;
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection(baseOffset: urlStart, extentOffset: urlEnd),
+    );
+    widget.chat.workingMsg = newText;
+    setState(() {});
+    widget.inputFocusNode.inputFocusNode.requestFocus();
+  }
+
+  void _fmt(void Function() apply) {
+    apply();
+    _fmtMenuCtl.close();
+  }
+
   Widget build(BuildContext context) {
     bool isScreenSmall = checkIsScreenSmall(context);
 
@@ -399,6 +460,48 @@ class _ChatInputState extends State<ChatInput> {
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  MenuAnchor(
+                    controller: _fmtMenuCtl,
+                    builder: (context, ctl, child) => IconButton(
+                      padding: const EdgeInsets.all(0),
+                      tooltip: "Formatting",
+                      onPressed: () =>
+                          ctl.isOpen ? ctl.close() : ctl.open(),
+                      icon: const Icon(Icons.text_format),
+                    ),
+                    menuChildren: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          IconButton(
+                              tooltip: "Bold",
+                              icon: const Icon(Icons.format_bold),
+                              onPressed: () =>
+                                  _fmt(() => wrapSelection("**", "**"))),
+                          IconButton(
+                              tooltip: "Italic",
+                              icon: const Icon(Icons.format_italic),
+                              onPressed: () =>
+                                  _fmt(() => wrapSelection("_", "_"))),
+                          IconButton(
+                              tooltip: "Code",
+                              icon: const Icon(Icons.code),
+                              onPressed: () =>
+                                  _fmt(() => wrapSelection("`", "`"))),
+                          IconButton(
+                              tooltip: "Strikethrough",
+                              icon: const Icon(Icons.format_strikethrough),
+                              onPressed: () =>
+                                  _fmt(() => wrapSelection("~~", "~~"))),
+                          IconButton(
+                              tooltip: "Link",
+                              icon: const Icon(Icons.link),
+                              onPressed: () => _fmt(insertLink)),
+                        ]),
+                      ),
+                    ],
+                  ),
                   if (!isScreenSmall || controller.text == "")
                     IconButton(
                         onPressed: attachFile,

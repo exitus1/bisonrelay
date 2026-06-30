@@ -52,6 +52,17 @@ class _RTCSessionHeaderState extends State<RTCSessionHeader> {
   void joinLiveSession() async {
     try {
       await rtc.joinLiveSession(session);
+      // Auto-unmute on join so the user can talk immediately, but make it
+      // unmistakable that their mic is now live.
+      try {
+        if (!session.hasHotAudio) {
+          await rtc.switchHotAudio(session);
+        }
+      } catch (_) {}
+      if (mounted) {
+        showSuccessSnackbar(
+            this, "You're live — your mic is on. Tap the green button to mute.");
+      }
     } catch (exception) {
       showErrorSnackbar(this, "Unable to join session: $exception");
     }
@@ -224,18 +235,23 @@ class _RTCSessionHeaderState extends State<RTCSessionHeader> {
                   onPressed:
                       !session.joiningLiveSession ? joinLiveSession : null),
             SizedBox(width: isSmallScreen ? 5 : 20),
+            // Muted -> a clearly-visible red "Unmute". Mic hot -> a green,
+            // pulsing "Mic On" indicator (tap to mute) that makes it obvious
+            // you are live and transmitting.
             if (session.inLiveSession && !session.hasHotAudio)
-              button(Icons.mic_off_sharp, "Unmute", makeAudioHot,
+              ElevatedButton.icon(
+                  icon: const Icon(Icons.mic_off, size: 18),
+                  label: isSmallScreen
+                      ? const SizedBox.shrink()
+                      : const Txt("Unmute"),
+                  onPressed: makeAudioHot,
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colors.errorContainer,
-                      textStyle: theme.textStyleFor(context, TextSize.medium,
-                          TextColor.onErrorContainer))),
+                      backgroundColor: const Color(0xFF3A2326),
+                      foregroundColor: const Color(0xFFFF6B6B),
+                      side: const BorderSide(color: Color(0xFF5A2E33)))),
             if (session.hasHotAudio)
-              button(Icons.mic_sharp, "Mute", disableHotAudio,
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colors.surface,
-                      textStyle: theme.textStyleFor(
-                          context, TextSize.medium, TextColor.onSurface))),
+              _MicLiveIndicator(
+                  onTap: disableHotAudio, small: isSmallScreen),
             if (Platform.isAndroid &&
                 audio.androidFoundPlaybackDevices &&
                 session.inLiveSession) ...[
@@ -298,5 +314,90 @@ class _RTCSessionHeaderState extends State<RTCSessionHeader> {
         child: const Icon(Icons.menu),
       ),
     ]);
+  }
+}
+
+
+// Prominent, pulsing indicator shown while the local mic is hot. Makes it
+// obvious the user is live/transmitting. Tapping it mutes (disables hot audio).
+class _MicLiveIndicator extends StatefulWidget {
+  final VoidCallback onTap;
+  final bool small;
+  const _MicLiveIndicator({required this.onTap, required this.small});
+
+  @override
+  State<_MicLiveIndicator> createState() => _MicLiveIndicatorState();
+}
+
+class _MicLiveIndicatorState extends State<_MicLiveIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1100))
+      ..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: "Your mic is live — tap to mute",
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedBuilder(
+          animation: _ctrl,
+          builder: (context, _) {
+            final t = _ctrl.value; // 0..1
+            return Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: widget.small ? 12 : 16, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFF13D673),
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF1DFF8C)
+                        .withOpacity(0.30 + 0.35 * t),
+                    blurRadius: 8 + 14 * t,
+                    spreadRadius: 1 + 2 * t,
+                  ),
+                ],
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                // Pulsing dot.
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color.lerp(const Color(0xFF04130B),
+                        const Color(0xFFFFFFFF), 0.4 + 0.6 * t),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.mic, size: 18, color: Color(0xFF04130B)),
+                if (!widget.small) ...[
+                  const SizedBox(width: 6),
+                  const Text("Click to mute",
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF04130B))),
+                ],
+              ]),
+            );
+          },
+        ),
+      ),
+    );
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:async';
 
 import 'package:bruig/components/chat/input.dart';
@@ -22,6 +23,7 @@ import 'package:bruig/theme_manager.dart';
 import 'package:bruig/util.dart';
 import 'package:flutter/material.dart';
 import 'package:golib_plugin/definitions.dart';
+import 'package:golib_plugin/golib_plugin.dart';
 import 'package:provider/provider.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
@@ -176,14 +178,37 @@ class __RealtimeSessionPublisherWState
             onChangedDelta: (delta) async {
               await livePeer.modifyGain(delta);
             }),
-      const SizedBox(width: 8),
-      UserAvatarFromID(
-        client,
-        publisher.publisherID,
-        radius: 10,
+      const SizedBox(width: 10),
+      Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: (livePeer?.hasSound ?? false)
+                ? const Color(0xFF1DFF8C)
+                : Colors.transparent,
+            width: 2.5,
+          ),
+          boxShadow: (livePeer?.hasSound ?? false)
+              ? [
+                  BoxShadow(
+                      color: const Color(0xFF1DFF8C).withOpacity(0.45),
+                      blurRadius: 12)
+                ]
+              : null,
+        ),
+        padding: const EdgeInsets.all(2),
+        child: UserAvatarFromID(
+          client,
+          publisher.publisherID,
+          radius: 22,
+        ),
       ),
-      const SizedBox(width: 5, height: 30),
-      Txt.S(pubNick),
+      const SizedBox(width: 12, height: 48),
+      Text(pubNick,
+          style: const TextStyle(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFFF2F4F3))),
       if (session.inLiveSession &&
           peer != null &&
           (peer?.bufferCount ?? 0) > 0) ...[
@@ -232,6 +257,26 @@ class _ActiveRealtimeChatScreenState extends State<ActiveRealtimeChatScreen> {
   RealtimeChatModel get rtc => widget.rtc;
   ClientModel get client => rtc.client;
   List<RMRTDTSessionPublisher> publishers = [];
+  bool showInfo = false;
+
+  // A muted label/value row for the tucked-away session metadata.
+  Widget _infoRow(String k, String v) => Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+              width: 92,
+              child: Text(k,
+                  style: const TextStyle(
+                      fontSize: 12.5, color: Color(0xFF5F6764)))),
+          Expanded(
+              child: SelectableText(v,
+                  maxLines: 1,
+                  style: const TextStyle(
+                      fontSize: 12.5,
+                      letterSpacing: 0,
+                      color: Color(0xFF9AA3A0)))),
+        ]),
+      );
   ChatModel get sessionChat => session.info.gc == ""
       ? session.chat
       : client.getExistingChat(session.info.gc) ?? session.chat;
@@ -300,49 +345,120 @@ class _ActiveRealtimeChatScreenState extends State<ActiveRealtimeChatScreen> {
   @override
   Widget build(BuildContext context) {
     var ownerNick = rtc.client.getNick(session.info.metadata.owner);
+    final live = session.inLiveSession;
+    final desc = session.info.metadata.description;
+    final title =
+        desc.isNotEmpty ? desc : session.info.metadata.rv.substring(0, 10);
 
     return SizedBox(
         child: Column(children: [
       Box(
-        // Info panel
-        color: SurfaceColor.primaryContainer,
-        padding: const EdgeInsets.all(10),
+        // Info / lobby panel.
+        color: SurfaceColor.surfaceContainerLowest,
+        padding: EdgeInsets.all(live ? 12 : 18),
         margin: const EdgeInsets.only(left: 10, right: 12, bottom: 10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Lobby hero — only when not in a live session.
+          if (!live) ...[
+            Row(children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  color: const Color(0xFF0E1A13),
+                  border: Border.all(color: const Color(0xFF1D3B2B)),
+                ),
+                child: const Icon(Icons.headphones, color: Color(0xFF1DFF8C)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFF2F4F3))),
+                      const SizedBox(height: 3),
+                      Text("${publishers.length} members · not live",
+                          style: const TextStyle(
+                              fontSize: 12.5, color: Color(0xFF5F6764))),
+                    ]),
+              ),
+            ]),
+            const SizedBox(height: 16),
+          ],
+
+          // Real Join/Leave button + context menu (and live controls).
           RTCSessionHeader(rtc, session, widget.audio, client),
-          const SizedBox(height: 10),
-          if (session.isInstant)
+
+          if (session.isInstant) ...[
+            const SizedBox(height: 8),
             Box(
-                padding: EdgeInsets.symmetric(horizontal: 10),
-                margin: EdgeInsets.only(bottom: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                margin: const EdgeInsets.only(bottom: 5),
                 color: SurfaceColor.tertiary,
                 child: Txt.S("Instant Call - will be removed once left")),
-          Txt.S("RV: ${session.info.metadata.rv}"),
-          Txt.S("Size: ${session.info.metadata.size}"),
-          Txt.S("Description: ${session.info.metadata.description}"),
-          Txt.S("Local Peer ID: ${session.info.localPeerID.toRadixString(16)}"),
-          Row(
-            children: [
-              const Txt.S("Owner: "),
-              UserAvatarFromID(
-                rtc.client,
-                session.info.metadata.owner,
-                radius: 10,
-              ),
-              const SizedBox(width: 5),
-              Txt.S(ownerNick)
-            ],
+          ],
+
+          const SizedBox(height: 12),
+
+          // Tucked-away technical metadata (RV / Size / Peer ID / Owner).
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => setState(() => showInfo = !showInfo),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(children: [
+                Icon(showInfo ? Icons.expand_less : Icons.info_outline,
+                    size: 16, color: const Color(0xFF9AA3A0)),
+                const SizedBox(width: 6),
+                const Text("Session info",
+                    style:
+                        TextStyle(fontSize: 13, color: Color(0xFF9AA3A0))),
+              ]),
+            ),
           ),
-          const SizedBox(height: 10),
-          const LNInfoSectionHeader("Session Members"),
-          ...publishers.map((pub) => _RealtimeSessionPublisherW(
-              client: rtc.client,
-              publisher: pub,
-              session: session,
-              peer: session.livePeer(pub.peerID))),
+          if (showInfo) ...[
+            const SizedBox(height: 8),
+            _infoRow("RV", session.info.metadata.rv),
+            _infoRow("Size", "${session.info.metadata.size}"),
+            _infoRow("Local Peer ID",
+                session.info.localPeerID.toRadixString(16)),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(children: [
+                const SizedBox(
+                    width: 92,
+                    child: Text("Owner",
+                        style: TextStyle(
+                            fontSize: 12.5, color: Color(0xFF5F6764)))),
+                UserAvatarFromID(rtc.client, session.info.metadata.owner,
+                    radius: 14),
+                const SizedBox(width: 6),
+                Txt.S(ownerNick),
+              ]),
+            ),
+          ],
+
+          if (!session.inLiveSession) ...[
+            const SizedBox(height: 14),
+            const LNInfoSectionHeader("Session Members"),
+            ...publishers.map((pub) => _RealtimeSessionPublisherW(
+                client: rtc.client,
+                publisher: pub,
+                session: session,
+                peer: session.livePeer(pub.peerID))),
+          ],
         ]),
       ),
       if (session.inLiveSession) ...[
+        _LiveStage(
+            session: session, rtc: rtc, client: client, audio: widget.audio),
         Expanded(
             child: Stack(children: [
           Messages(sessionChat, rtc.client, _itemScrollController,
@@ -362,5 +478,371 @@ class _ActiveRealtimeChatScreenState extends State<ActiveRealtimeChatScreen> {
         const SizedBox(height: 5),
       ],
     ]));
+  }
+}
+
+// ============================ Live session stage =============================
+
+// Rich "stage" shown while in a live session: session timer + connection
+// signal, big speaking avatars (green ring reacts to BR's real sound
+// detection), and an inline mic device picker + activity indicator.
+class _LiveStage extends StatefulWidget {
+  final RTDTSessionModel session;
+  final RealtimeChatModel rtc;
+  final ClientModel client;
+  final AudioModel audio;
+  const _LiveStage(
+      {required this.session,
+      required this.rtc,
+      required this.client,
+      required this.audio});
+
+  @override
+  State<_LiveStage> createState() => _LiveStageState();
+}
+
+class _LiveStageState extends State<_LiveStage>
+    with SingleTickerProviderStateMixin {
+  late final DateTime _start;
+  Duration _elapsed = Duration.zero;
+  Timer? _timer;
+  List<dynamic> _captureDevices = [];
+  late final AnimationController _pulse;
+
+  RTDTSessionModel get session => widget.session;
+
+  @override
+  void initState() {
+    super.initState();
+    _start = DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _elapsed = DateTime.now().difference(_start));
+    });
+    _pulse = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 850))
+      ..repeat(reverse: true);
+    _loadDevices();
+    session.addListener(_onSession);
+  }
+
+  void _onSession() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadDevices() async {
+    try {
+      final devs = await Golib.listAudioDevices();
+      if (mounted) setState(() => _captureDevices = devs.capture);
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pulse.dispose();
+    session.removeListener(_onSession);
+    super.dispose();
+  }
+
+  String _fmt(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final sec = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final h = d.inHours;
+    return h > 0 ? "${h.toString().padLeft(2, '0')}:$m:$sec" : "$m:$sec";
+  }
+
+  int _barsForRTT(int rttNano) {
+    if (rttNano <= 0) return 0;
+    final ms = rttNano / 1e6;
+    if (ms < 60) return 4;
+    if (ms < 120) return 3;
+    if (ms < 250) return 2;
+    return 1;
+  }
+
+  bool get _localHasSound {
+    try {
+      final pub = session.info.metadata.publishers
+          .firstWhere((p) => p.publisherID == widget.client.publicID);
+      return session.livePeer(pub.peerID)?.hasSound ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pubs = session.info.metadata.publishers;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(10, 0, 12, 10),
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0C0D0C),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF1C1F1D)),
+      ),
+      child: Column(children: [
+        Row(children: [
+          Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                  shape: BoxShape.circle, color: Color(0xFFFF4D4D))),
+          const SizedBox(width: 7),
+          const Text("LIVE",
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                  color: Color(0xFFFF6B6B))),
+          const SizedBox(width: 10),
+          Text(_fmt(_elapsed),
+              style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFFF2F4F3))),
+          const Spacer(),
+          Consumer<RealtimeChatRTTModel>(builder: (context, rtt, _) {
+            return Row(children: [
+              _SignalBars(bars: _barsForRTT(rtt.lastRTTNano)),
+              const SizedBox(width: 7),
+              Text(rtt.lastRTTNano > 0 ? rtt.lastRTTNanoStr : "—",
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF9AA3A0))),
+            ]);
+          }),
+        ]),
+        const SizedBox(height: 22),
+        Wrap(
+          spacing: 30,
+          runSpacing: 18,
+          alignment: WrapAlignment.center,
+          children: pubs.map((pub) {
+            final speaking = session.livePeer(pub.peerID)?.hasSound ?? false;
+            var nick = widget.client.getNick(pub.publisherID);
+            if (nick == "") nick = pub.alias;
+            return _StageAvatar(
+                client: widget.client,
+                uid: pub.publisherID,
+                nick: nick,
+                speaking: speaking,
+                pulse: _pulse);
+          }).toList(),
+        ),
+        if (pubs.length <= 1) ...[
+          const SizedBox(height: 18),
+          const Text("You're the only one here",
+              style: TextStyle(fontSize: 13.5, color: Color(0xFF9AA3A0))),
+          const SizedBox(height: 2),
+          const Text("Invite someone from the menu to start talking",
+              style: TextStyle(fontSize: 12, color: Color(0xFF5F6764))),
+        ],
+        const SizedBox(height: 22),
+        _MicPanel(
+            audio: widget.audio,
+            devices: _captureDevices,
+            hot: session.hasHotAudio,
+            active: _localHasSound,
+            pulse: _pulse),
+      ]),
+    );
+  }
+}
+
+// Connection-quality bars derived from RTT.
+class _SignalBars extends StatelessWidget {
+  final int bars; // 0..4
+  const _SignalBars({required this.bars});
+  @override
+  Widget build(BuildContext context) {
+    const heights = [7.0, 11.0, 15.0, 19.0];
+    Color colorFor(int i) {
+      if (i >= bars) return const Color(0xFF2A2E2B);
+      if (bars >= 3) return const Color(0xFF1DFF8C);
+      if (bars == 2) return const Color(0xFFE2B340);
+      return const Color(0xFFFF6B6B);
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(
+          4,
+          (i) => Padding(
+                padding: const EdgeInsets.only(left: 2),
+                child: Container(
+                    width: 3.5,
+                    height: heights[i],
+                    decoration: BoxDecoration(
+                        color: colorFor(i),
+                        borderRadius: BorderRadius.circular(2))),
+              )),
+    );
+  }
+}
+
+// A large avatar with a green ring that reacts to real sound detection.
+class _StageAvatar extends StatelessWidget {
+  final ClientModel client;
+  final String uid;
+  final String nick;
+  final bool speaking;
+  final AnimationController pulse;
+  const _StageAvatar(
+      {required this.client,
+      required this.uid,
+      required this.nick,
+      required this.speaking,
+      required this.pulse});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      AnimatedBuilder(
+        animation: pulse,
+        builder: (context, _) {
+          final t = speaking ? pulse.value : 0.0;
+          return Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: speaking
+                    ? Color.lerp(const Color(0xFF13D673),
+                        const Color(0xFF1DFF8C), t)!
+                    : const Color(0xFF23262B),
+                width: 3,
+              ),
+              boxShadow: speaking
+                  ? [
+                      BoxShadow(
+                          color: const Color(0xFF1DFF8C)
+                              .withOpacity(0.25 + 0.35 * t),
+                          blurRadius: 14 + 12 * t,
+                          spreadRadius: 1 + 2 * t),
+                    ]
+                  : null,
+            ),
+            child: UserAvatarFromID(client, uid, radius: 34),
+          );
+        },
+      ),
+      const SizedBox(height: 10),
+      Text(nick,
+          style: const TextStyle(
+              fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFFF2F4F3))),
+      const SizedBox(height: 2),
+      Text(speaking ? "speaking" : "",
+          style: const TextStyle(fontSize: 11.5, color: Color(0xFF1DFF8C))),
+    ]);
+  }
+}
+
+// Inline mic device picker + activity indicator (a prettier in-session version
+// of the Settings mic chooser). The activity bars reflect BR's sound detection
+// (active vs silent) — BR does not expose a numeric loudness level.
+class _MicPanel extends StatelessWidget {
+  final AudioModel audio;
+  final List<dynamic> devices;
+  final bool hot;
+  final bool active;
+  final AnimationController pulse;
+  const _MicPanel(
+      {required this.audio,
+      required this.devices,
+      required this.hot,
+      required this.active,
+      required this.pulse});
+
+  @override
+  Widget build(BuildContext context) {
+    final currentId = audio.captureDeviceId;
+    final hasCurrent = devices.any((d) => d.id == currentId);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0E100E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF1F231F)),
+      ),
+      child: Row(children: [
+        Icon(hot ? Icons.mic : Icons.mic_off,
+            size: 20,
+            color: hot ? const Color(0xFF1DFF8C) : const Color(0xFF5F6764)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: devices.isEmpty
+              ? const Text("Default microphone",
+                  style: TextStyle(fontSize: 13.5, color: Color(0xFF9AA3A0)))
+              : DropdownButton<String>(
+                  value: hasCurrent ? currentId : null,
+                  isExpanded: true,
+                  isDense: true,
+                  underline: const SizedBox(),
+                  dropdownColor: const Color(0xFF15171A),
+                  hint: const Text("Default microphone",
+                      style:
+                          TextStyle(fontSize: 13.5, color: Color(0xFF9AA3A0))),
+                  style: const TextStyle(
+                      fontSize: 13.5, color: Color(0xFFF2F4F3)),
+                  items: devices
+                      .map<DropdownMenuItem<String>>((d) => DropdownMenuItem(
+                            value: d.id as String,
+                            child: Text(d.name as String,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) audio.captureDeviceId = v;
+                  },
+                ),
+        ),
+        const SizedBox(width: 10),
+        _MicActivityBars(active: hot && active, pulse: pulse),
+      ]),
+    );
+  }
+}
+
+// Animated bars that come alive when BR detects sound from the local mic.
+class _MicActivityBars extends StatelessWidget {
+  final bool active;
+  final AnimationController pulse;
+  const _MicActivityBars({required this.active, required this.pulse});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: pulse,
+      builder: (context, _) {
+        final t = pulse.value;
+        double h(int i) {
+          if (!active) return 4;
+          final phases = [0.0, 0.33, 0.66, 0.5, 0.15];
+          final v = (1 + math.sin((t + phases[i % phases.length]) * 6.283)) / 2;
+          return 4 + v * 14;
+        }
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: List.generate(
+              5,
+              (i) => Padding(
+                    padding: const EdgeInsets.only(left: 2.5),
+                    child: Container(
+                      width: 3,
+                      height: h(i),
+                      decoration: BoxDecoration(
+                        color: active
+                            ? const Color(0xFF1DFF8C)
+                            : const Color(0xFF2A2E2B),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  )),
+        );
+      },
+    );
   }
 }

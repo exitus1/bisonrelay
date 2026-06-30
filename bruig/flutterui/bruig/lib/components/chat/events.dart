@@ -316,12 +316,12 @@ class _ReceivedSentPMState extends State<ReceivedSentPM> {
                                       top: 5, left: 10, right: 10, bottom: 5),
                                   decoration: BoxDecoration(
                                     color: isOwnMessage
-                                        ? const Color(0xFF0D1A3D)
+                                        ? const Color(0xFF23262B)
                                         : const Color(0xFF111311),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: isOwnMessage
-                                          ? const Color(0xFF26416E)
+                                          ? const Color(0xFF2C6BED)
                                           : const Color(0xFF1F231F),
                                       width: 1,
                                     ),
@@ -1507,3 +1507,5 @@ class Event extends StatelessWidget {
         child: Text("Unknonwn chat event type"));
   }
 }
+
+

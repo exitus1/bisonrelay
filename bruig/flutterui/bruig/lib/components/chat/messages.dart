@@ -192,7 +192,9 @@ class _MessagesState extends State<Messages> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       floatingActionButton: _getFAB(),
-      body: PageStorage(
+      body: Stack(children: [
+        const Positioned.fill(child: ChatBackdropWash()),
+        PageStorage(
         bucket: _pageStorageBucket,
         child: ScrollablePositionedList.builder(
           reverse: true,
@@ -203,6 +205,24 @@ class _MessagesState extends State<Messages> {
               Event(chat, chat.msgs[index], client),
           itemScrollController: widget.itemScrollController,
           itemPositionsListener: widget.itemPositionsListener,
+        ),
+      ),
+      ]),
+    );
+  }
+}
+class ChatBackdropWash extends StatelessWidget {
+  const ChatBackdropWash({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment.bottomRight,
+          radius: 1.25,
+          colors: [Color(0x12FFFFFF), Color(0x00FFFFFF)],
+          stops: [0.0, 0.62],
         ),
       ),
     );
