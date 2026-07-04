@@ -84,13 +84,9 @@ class ImageDialog extends StatelessWidget {
         child: ContextMenu(
       handleItemTap: (v) => contextMenuItemClicked(context, v),
       items: _contextMenuItems,
-      child: Container(
+      child: ConstrainedBox(
         constraints: const BoxConstraints(maxHeight: 1000, maxWidth: 1000),
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: MemoryImage(imgContent),
-          ),
-        ),
+        child: Image.memory(imgContent, fit: BoxFit.contain),
       ),
     ));
   }
@@ -139,13 +135,9 @@ class AvifDialog extends StatelessWidget {
         child: ContextMenu(
       handleItemTap: (v) => contextMenuItemClicked(context, v),
       items: _contextMenuItems,
-      child: Container(
+      child: ConstrainedBox(
         constraints: const BoxConstraints(maxHeight: 1000, maxWidth: 1000),
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AvifImage.memory(imgContent).image,
-          ),
-        ),
+        child: AvifImage.memory(imgContent, fit: BoxFit.contain),
       ),
     ));
   }

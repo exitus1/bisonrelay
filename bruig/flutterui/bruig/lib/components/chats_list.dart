@@ -83,13 +83,27 @@ class _ChatHeadingWState extends State<_ChatHeadingW> {
     });
   }
 
+  // Reduce markdown to plain text for the one-line preview: drop blockquote
+  // markers, bold/italic/strike/code punctuation, link syntax and headers.
+  String _stripMarkdown(String src) {
+    var s = src;
+    s = s.replaceAll(RegExp(r'^\s*>+\s?', multiLine: true), '');
+    s = s.replaceAllMapped(
+        RegExp(r'\[([^\]]*)\]\([^)]*\)'), (m) => m.group(1) ?? '');
+    s = s.replaceAll(RegExp(r'^\s*#{1,6}\s*', multiLine: true), '');
+    s = s.replaceAll(RegExp(r'[*_~`]'), '');
+    return s;
+  }
+
   String? _lastMsgPreview() {
     // Unsent draft takes priority in the preview.
     final draft = chat.workingMsg.trim();
     if (draft.isNotEmpty) return "Draft: ${draft.replaceAll('\n', ' ')}";
     for (final e in chat.msgs) {
       if (e.isMessage) {
-        final t = _cleanEmbeds(e.event.msg).trim().replaceAll('\n', ' ');
+        final t = _stripMarkdown(_cleanEmbeds(e.event.msg))
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
         if (t.isEmpty) continue;
         if (e.source == null) return "You: $t";
         if (chat.isGC) {
@@ -253,9 +267,35 @@ class _ChatHeadingWState extends State<_ChatHeadingW> {
       if (!isActive) {
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(radius),
+            // Soft diagonal glow (Pulse-style): light top-left -> dark bottom-right.
+            gradient: const RadialGradient(
+              center: Alignment(-0.76, -1.2),
+              radius: 1.2,
+              colors: [Color(0xFF242424), Color(0xFF0E0E0E)],
+              stops: [0.0, 0.52],
+            ),
+          ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(radius),
-            child: tile,
+            child: Stack(
+              children: [
+                // ListTile is the base (sizes the stack, spans full width);
+                // its background is transparent so the glow shows through.
+                tile,
+                // Hairline: 1px lit top edge, clipped to the rounded corners.
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: IgnorePointer(
+                    child: Container(
+                        height: 1, color: const Color(0xFF2E2E2E)),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       }
@@ -302,6 +342,7 @@ class _ChatHeadingWState extends State<_ChatHeadingW> {
                     : null,
                 targetGcChat: chat,
                 child: wrapSelected(ListTile(
+                  tileColor: Colors.transparent,
                   horizontalTitleGap: 12,
                   contentPadding: const EdgeInsets.only(
                     left: 10,
@@ -332,7 +373,7 @@ class _ChatHeadingWState extends State<_ChatHeadingW> {
                 client: client,
                 targetUserChat: chat,
                 child: wrapSelected(ListTile(
-                  tileColor: isActiveRTC ? Colors.green.shade600 : null,
+                  tileColor: isActiveRTC ? Colors.green.shade600 : Colors.transparent,
                   selectedTileColor:
                       isActiveRTC ? Colors.green.shade600 : Colors.transparent,
                   horizontalTitleGap: 12,
@@ -784,3 +825,4 @@ class _ActiveChatsListMenuState extends State<ActiveChatsListMenu>
     );
   }
 }
+

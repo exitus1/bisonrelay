@@ -35,6 +35,27 @@ class ChatsScreenTitle extends StatelessWidget {
         icon: Icon(Icons.call_outlined));
   }
 
+  // Search button: toggles the per-chat search bar (lives in ActiveChat) via
+  // the shared UIStateModel flag. Pronounced icon + label on desktop; a compact
+  // icon on small screens.
+  Widget buildSearchButton(BuildContext context, ClientModel client,
+      {bool compact = false}) {
+    void toggle() => client.ui.chatSearch.val = !client.ui.chatSearch.val;
+    if (compact) {
+      return IconButton(
+        onPressed: toggle,
+        icon: const Icon(Icons.search),
+        tooltip: "Search this chat",
+      );
+    }
+    return TextButton.icon(
+      onPressed: toggle,
+      icon: const Icon(Icons.search, size: 20),
+      label: const Text("Search",
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer4<RealtimeChatModel, ActiveChatModel, ShowProfileModel,
@@ -64,6 +85,7 @@ class ChatsScreenTitle extends StatelessWidget {
           const Spacer(),
           if (!chat.isGC && rtc.active.active == null)
             buildInstantCallIcon(context, rtc, chat),
+          buildSearchButton(context, client, compact: true),
         ]);
       }
 
@@ -82,6 +104,8 @@ class ChatsScreenTitle extends StatelessWidget {
           const SizedBox(width: 10),
           buildInstantCallIcon(context, rtc, chat),
         ],
+        const Spacer(),
+        buildSearchButton(context, client),
       ]);
     });
   }
@@ -405,7 +429,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
     bool isScreenSmall = checkIsScreenSmall(context);
     return !isScreenSmall
         ? Row(children: [
+            const SizedBox(width: 10),
             ActiveChatsListMenu(client, inputFocusNode, rtc),
+            const SizedBox(width: 10),
             Expanded(
                 child: Container(
               decoration: const BoxDecoration(

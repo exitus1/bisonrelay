@@ -122,6 +122,17 @@ class _ChatInputState extends State<ChatInput> {
     });
   }
 
+  bool _wasReplying = false;
+
+  // Focus the input the moment a reply gets set, so typing can start at once.
+  void _onChatReplyChanged() {
+    final replying = widget.chat.replyToMsg != null;
+    if (replying && !_wasReplying) {
+      widget.inputFocusNode.inputFocusNode.requestFocus();
+    }
+    _wasReplying = replying;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -137,6 +148,7 @@ class _ChatInputState extends State<ChatInput> {
     widget.chat.unkxdMembers.addListener(containsUnxkdChanged);
     containsUnkxdMembers = widget.chat.unkxdMembers.value?.isNotEmpty ?? false;
     controller.addListener(controllerUpdated);
+    widget.chat.addListener(_onChatReplyChanged);
   }
 
   @override
@@ -163,6 +175,8 @@ class _ChatInputState extends State<ChatInput> {
     if (oldWidget.chat != widget.chat) {
       oldWidget.chat.unkxdMembers.removeListener(containsUnxkdChanged);
       widget.chat.unkxdMembers.addListener(containsUnxkdChanged);
+      oldWidget.chat.removeListener(_onChatReplyChanged);
+      widget.chat.addListener(_onChatReplyChanged);
       containsUnkxdMembers =
           widget.chat.unkxdMembers.value?.isNotEmpty ?? false;
       cancelAttach(callSetState: false);
@@ -176,6 +190,7 @@ class _ChatInputState extends State<ChatInput> {
     widget.inputFocusNode.pasteEventHandler = null;
     widget.inputFocusNode.addEmojiHandler = null;
     widget.chat.unkxdMembers.removeListener(containsUnxkdChanged);
+    widget.chat.removeListener(_onChatReplyChanged);
     super.dispose();
   }
 
@@ -196,7 +211,17 @@ class _ChatInputState extends State<ChatInput> {
       return;
     }
     if (withEmbeds != "") {
-      widget._send(withEmbeds);
+      var toSend = withEmbeds;
+      final rNick = widget.chat.replyToNick;
+      final rMsg = widget.chat.replyToMsg;
+      if (rNick != null && rMsg != null) {
+        var quoted = rMsg.replaceAll(RegExp(r'\s+'), ' ').trim();
+        if (quoted.contains('--embed[')) quoted = '[attachment]';
+        if (quoted.length > 120) quoted = '${quoted.substring(0, 120)}...';
+        toSend = '> **$rNick:** $quoted\n\n$withEmbeds';
+        widget.chat.clearReplyTo();
+      }
+      widget._send(toSend);
       widget.chat.workingMsg = "";
       setState(() {
         embeds = [];
@@ -384,6 +409,56 @@ class _ChatInputState extends State<ChatInput> {
     _fmtMenuCtl.close();
   }
 
+  Widget _buildReplyChip() {
+    return AnimatedBuilder(
+      animation: widget.chat,
+      builder: (context, _) {
+        final rNick = widget.chat.replyToNick;
+        final rMsg = widget.chat.replyToMsg;
+        if (rNick == null || rMsg == null) return const SizedBox.shrink();
+        var preview = rMsg.replaceAll(RegExp(r'\s+'), ' ').trim();
+        if (preview.contains('--embed[')) preview = '[attachment]';
+        if (preview.length > 80) preview = '${preview.substring(0, 80)}...';
+        return Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          decoration: const BoxDecoration(
+            color: Color(0xFF171A1F),
+            border:
+                Border(left: BorderSide(color: Color(0xFF2C6BED), width: 3)),
+          ),
+          padding: const EdgeInsets.fromLTRB(9, 6, 6, 6),
+          child: Row(children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("Replying to $rNick",
+                      style: const TextStyle(
+                          color: Color(0xFF5B8FE8),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500)),
+                  Text(preview,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Color(0xFF9A9A9A), fontSize: 12)),
+                ],
+              ),
+            ),
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              iconSize: 18,
+              onPressed: widget.chat.clearReplyTo,
+              icon: const Icon(Icons.close, color: Color(0xFF6B6B6B)),
+            ),
+          ]),
+        );
+      },
+    );
+  }
+
   Widget build(BuildContext context) {
     bool isScreenSmall = checkIsScreenSmall(context);
 
@@ -410,7 +485,12 @@ class _ChatInputState extends State<ChatInput> {
       ]);
     }
 
-    return Row(children: [
+    return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+      _buildReplyChip(),
+      Row(children: [
       Expanded(
         child: TextField(
           onChanged: (value) {
@@ -547,6 +627,7 @@ class _ChatInputState extends State<ChatInput> {
         const SizedBox(width: 5),
         const RecordAudioInputButton(),
       ],
+    ]),
     ]);
   }
 }

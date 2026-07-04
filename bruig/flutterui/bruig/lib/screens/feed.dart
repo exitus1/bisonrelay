@@ -166,7 +166,7 @@ class _FeedScreenState extends State<FeedScreen> {
     return ScreenWithChatSideMenu(
         client,
         Row(children: [
-          !isScreenSmall && !hasArgs
+          !isScreenSmall && !hasArgs && tabIndex != 0 && tabIndex != 1
               ? FeedBar(onItemChanged, tabIndex)
               : const Empty(),
           Expanded(child: activeTab())

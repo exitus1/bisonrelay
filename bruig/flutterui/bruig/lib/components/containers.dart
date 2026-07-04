@@ -74,6 +74,7 @@ class SecondarySideMenu extends StatelessWidget {
               margin: const EdgeInsets.all(1),
               width: width ?? 120,
               decoration: BoxDecoration(
+                  color: theme.surfaceColor(SurfaceColor.surface),
                   border: Border(
                       right:
                           BorderSide(color: theme.extraColors.sidebarDivider))),
@@ -114,7 +115,7 @@ class SecondarySideMenuList extends StatelessWidget {
                   children: [
                     Expanded(
                         child: ListTileTheme.merge(
-                            tileColor: theme.colors.surfaceContainerLowest,
+                            tileColor: theme.colors.surface,
                             // tileColor: Colors.amber,
                             child: _child())),
                     ...(footer != null ? [footer!] : []),

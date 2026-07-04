@@ -143,9 +143,9 @@ class _SidebarState extends State<Sidebar> with WindowListener {
           width: 70,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(3),
-            color: theme.colors.surfaceContainerLow,
+            color: theme.colors.surface,
             border: Border(
-                right: BorderSide(color: theme.extraColors.sidebarDivider)),
+                right: BorderSide(color: const Color(0xFF2E2E2E), width: 1)),
           ),
           hoverTextStyle:
               theme.textStyleFor(context, null, TextColor.onSurfaceVariant),
@@ -182,9 +182,23 @@ class _SidebarState extends State<Sidebar> with WindowListener {
         extendedTheme: const SidebarXTheme(width: 200),
         footerDivider:
             Divider(height: 2, color: theme.extraColors.sidebarDivider),
-        footerBuilder: (context, something) => Container(
+        footerBuilder: (context, extended) => Container(
             margin: const EdgeInsets.all(5),
-            child: NotificationsDrawerHeader(widget.ntfns)),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              if (client.countRelays)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    extended == true
+                        ? "Relay Counter: ${client.msgsSent}"
+                        : "${client.msgsSent}",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: theme.colors.onSurfaceVariant, fontSize: 12),
+                  ),
+                ),
+              NotificationsDrawerHeader(widget.ntfns),
+            ])),
         controller: ctrl,
         items: mainMenu.menus
             .where((m) => m.hiddenFromSideBar == false)

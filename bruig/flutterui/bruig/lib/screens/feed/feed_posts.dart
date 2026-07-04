@@ -13,6 +13,7 @@ import 'package:bruig/util.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:bruig/components/md_elements.dart';
+import 'package:bruig/components/pay_tip.dart';
 
 class _AvatarOrUnread extends StatelessWidget {
   final ClientModel client;
@@ -254,6 +255,40 @@ class _FeedPostWState extends State<FeedPostW> {
                               fontWeight: FontWeight.w500)),
                     ],
                     const Spacer(),
+                    Tooltip(
+                      message: "Relay to your subscribers",
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => Golib.relayPostToAll(
+                            widget.post.summ.from, widget.post.summ.id),
+                        child: const Padding(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Icon(Icons.cached,
+                              size: 18, color: Color(0xFF5F6764)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    if (!mine)
+                      Tooltip(
+                        message: "Tip the author",
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            final c =
+                                widget.client.getExistingChat(authorID);
+                            if (c != null) showPayTipModalBottom(context, c);
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 2),
+                            child: Icon(Icons.bolt,
+                                size: 18, color: Color(0xFF5F6764)),
+                          ),
+                        ),
+                      ),
+                    if (!mine) const SizedBox(width: 4),
                     ListenableBuilder(
                       listenable: FeedBookmarks.instance,
                       builder: (context, _) {
@@ -469,6 +504,9 @@ class _FeedPostsState extends State<FeedPosts> {
       onSort: (s) => setState(() => _sort = s),
       onUnreadOnly: (b) => setState(() => _unreadOnly = b),
       onSearch: (t) => setState(() => _search = t),
+      onYourPosts: () => widget.tabChange(1, null),
+      onSubscriptions: () => widget.tabChange(2, null),
+      onNewPost: () => widget.tabChange(3, null),
     );
 
     return SelectionArea(
@@ -511,6 +549,9 @@ class _FeedSidePanel extends StatelessWidget {
   final ValueChanged<_FeedSort> onSort;
   final ValueChanged<bool> onUnreadOnly;
   final ValueChanged<String> onSearch;
+  final VoidCallback onYourPosts;
+  final VoidCallback onSubscriptions;
+  final VoidCallback onNewPost;
   const _FeedSidePanel({
     required this.view,
     required this.sort,
@@ -520,6 +561,9 @@ class _FeedSidePanel extends StatelessWidget {
     required this.onSort,
     required this.onUnreadOnly,
     required this.onSearch,
+    required this.onYourPosts,
+    required this.onSubscriptions,
+    required this.onNewPost,
   });
 
   Widget _navItem(IconData ic, String label, _FeedView v, {String? trailing}) {
@@ -554,6 +598,26 @@ class _FeedSidePanel extends StatelessWidget {
                 style:
                     const TextStyle(fontSize: 12.5, color: Color(0xFF5F6764))),
           ],
+        ]),
+      ),
+    );
+  }
+
+  Widget _actionItem(IconData ic, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        child: Row(children: [
+          Icon(ic, size: 19, color: const Color(0xFF9AA3A0)),
+          const SizedBox(width: 12),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFFF2F4F3))),
         ]),
       ),
     );
@@ -651,6 +715,10 @@ class _FeedSidePanel extends StatelessWidget {
                 trailing: "${FeedHidden.instance.count}"),
             _navItem(Icons.edit_note_outlined, "Drafts", _FeedView.drafts,
                 trailing: "${FeedDrafts.instance.count}"),
+            _sectionLabel("POSTS"),
+            _actionItem(Icons.article_outlined, "Your Posts", onYourPosts),
+            _actionItem(Icons.rss_feed, "Subscriptions", onSubscriptions),
+            _actionItem(Icons.add_box_outlined, "New Post", onNewPost),
             _sectionLabel("SORT"),
             _sortItem("Newest", _FeedSort.newest),
             _sortItem("Oldest", _FeedSort.oldest),

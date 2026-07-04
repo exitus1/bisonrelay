@@ -461,6 +461,77 @@ class MainSettingsScreen extends StatelessWidget {
   }
 }
 
+Widget _settLabel(String text, ColorScheme cs) => Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 9),
+      child: Text(text.toUpperCase(),
+          style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
+              color: cs.onSurfaceVariant)),
+    );
+
+Widget _settCard(ColorScheme cs, List<Widget> children) => Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: children),
+    );
+
+Widget _settChip(IconData icon, ColorScheme cs) => Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+          color: cs.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(9)),
+      alignment: Alignment.center,
+      child: Icon(icon, size: 19, color: cs.onSurfaceVariant),
+    );
+
+Widget _settDivider(ColorScheme cs) =>
+    Divider(height: 1, thickness: 1, indent: 66, color: cs.outlineVariant);
+
+Widget _settRow(ColorScheme cs,
+        {required IconData icon,
+        required String title,
+        String? subtitle,
+        Widget? trailing,
+        VoidCallback? onTap}) =>
+    InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(children: [
+          _settChip(icon, cs),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurface)),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: TextStyle(
+                          fontSize: 12.5, color: cs.onSurfaceVariant)),
+                ],
+              ],
+            ),
+          ),
+          if (trailing != null) ...[const SizedBox(width: 8), trailing],
+          if (onTap != null && trailing == null)
+            Icon(Icons.chevron_right, size: 20, color: cs.onSurfaceVariant),
+        ]),
+      ),
+    );
+
 class AccountSettingsScreen extends StatelessWidget {
   final ClientModel client;
   final ResetKXCB resetAllKXCB;
@@ -474,37 +545,148 @@ class AccountSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
-      const SizedBox(height: 10),
-      SizedBox(
-          width: 100,
-          height: 100,
-          child: SelfAvatar(client, onTap: pickAvatarCB)),
-      const SizedBox(height: 10),
-      Text(client.nick),
-      const SizedBox(height: 10),
-      Copyable(client.publicID),
-      const SizedBox(height: 10),
-      Expanded(
-          child: ListView(children: [
-        ListTile(
-          title: const Text("Reset all KX"),
-          onTap: () => resetAllKXCB(context),
+    final cs = Theme.of(context).colorScheme;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+      children: [
+        Center(
+          child: Column(children: [
+            Stack(alignment: Alignment.center, children: [
+              SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: SelfAvatar(client, onTap: pickAvatarCB)),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: IgnorePointer(
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: cs.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: cs.surface, width: 2),
+                    ),
+                    child: Icon(Icons.photo_camera,
+                        size: 16, color: cs.onPrimary),
+                  ),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            Text(client.nick,
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurface)),
+            const SizedBox(height: 2),
+            Text("Tap the avatar to change it",
+                style: TextStyle(fontSize: 12.5, color: cs.onSurfaceVariant)),
+          ]),
         ),
-        ListTile(
-          title: const Text("Reset KX from users 30d stale"),
-          onTap: () => resetKXCB(context),
+        const SizedBox(height: 24),
+        _settLabel("Identity", cs),
+        _settCard(cs, [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+            child: Row(children: [
+              _settChip(Icons.fingerprint, cs),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Public identity",
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: cs.onSurface)),
+                    const SizedBox(height: 2),
+                    Text(
+                        "Your unique Bison Relay ID. Share it so others can add you.",
+                        style: TextStyle(
+                            fontSize: 12.5, color: cs.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+            child: Copyable(client.publicID),
+          ),
+        ]),
+        const SizedBox(height: 22),
+        _settLabel("Relay Counter", cs),
+        AnimatedBuilder(
+          animation: client,
+          builder: (context, _) => _settCard(cs, [
+            _settRow(cs,
+                icon: Icons.insights,
+                title: "Relay Counter",
+                subtitle: "Messages you've sent",
+                trailing: Text("${client.msgsSent}",
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: cs.primary))),
+            _settDivider(cs),
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(children: [
+                _settChip(Icons.tag, cs),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Count Relays",
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: cs.onSurface)),
+                      const SizedBox(height: 2),
+                      Text("Show a running count of messages you send",
+                          style: TextStyle(
+                              fontSize: 12.5, color: cs.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Switch(
+                    value: client.countRelays,
+                    onChanged: (v) => client.setCountRelays(v)),
+              ]),
+            ),
+          ]),
         ),
-        ListTile(
-          title: const Text("Subscribe to all posts"),
-          onTap: () => subAllPostsCB(),
-        ),
-        ListTile(
-          title: const Text("List ongoing KX attempts"),
-          onTap: () => listKXs(),
-        ),
-      ]))
-    ]);
+        const SizedBox(height: 22),
+        _settLabel("Account", cs),
+        _settCard(cs, [
+          _settRow(cs,
+              icon: Icons.refresh,
+              title: "Reset all KX",
+              onTap: () => resetAllKXCB(context)),
+          _settDivider(cs),
+          _settRow(cs,
+              icon: Icons.history,
+              title: "Reset KX from users 30d stale",
+              onTap: () => resetKXCB(context)),
+          _settDivider(cs),
+          _settRow(cs,
+              icon: Icons.rss_feed,
+              title: "Subscribe to all posts",
+              onTap: () => subAllPostsCB()),
+          _settDivider(cs),
+          _settRow(cs,
+              icon: Icons.list_alt,
+              title: "List ongoing KX attempts",
+              onTap: () => listKXs()),
+        ]),
+      ],
+    );
   }
 }
 
@@ -571,44 +753,141 @@ void _showSelectTextSizeDialog(BuildContext context, ThemeNotifier theme) {
 class _AppearanceSettingsScreenState extends State<AppearanceSettingsScreen> {
   ThemeNotifier get theme => widget.theme;
 
+  Widget _sectionLabel(String text, ColorScheme cs) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 0, 4, 9),
+        child: Text(text.toUpperCase(),
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+                color: cs.onSurfaceVariant)),
+      );
+
+  Widget _card(ColorScheme cs, List<Widget> children) => Container(
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: children),
+      );
+
+  Widget _iconChip(IconData icon, ColorScheme cs) => Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+            color: cs.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(9)),
+        alignment: Alignment.center,
+        child: Icon(icon, size: 19, color: cs.onSurfaceVariant),
+      );
+
+  Widget _divider(ColorScheme cs) =>
+      Divider(height: 1, thickness: 1, indent: 66, color: cs.outlineVariant);
+
+  Widget _navRow(ColorScheme cs,
+          {required IconData icon,
+          required String title,
+          String? value,
+          required VoidCallback onTap}) =>
+      InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(children: [
+            _iconChip(icon, cs),
+            const SizedBox(width: 14),
+            Expanded(
+                child: Text(title,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurface))),
+            if (value != null && value.isNotEmpty)
+              Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Text(value,
+                      style: TextStyle(
+                          fontSize: 14, color: cs.onSurfaceVariant))),
+            Icon(Icons.chevron_right, size: 20, color: cs.onSurfaceVariant),
+          ]),
+        ),
+      );
+
+  Widget _switchRow(ColorScheme cs) => ValueListenableBuilder<bool>(
+        valueListenable: monochromeAvatars,
+        builder: (context, mono, _) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(children: [
+            _iconChip(Icons.account_circle_outlined, cs),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Monochrome avatars",
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: cs.onSurface)),
+                  const SizedBox(height: 2),
+                  Text(
+                      "Use graphite fallback avatars instead of colored initials",
+                      style: TextStyle(
+                          fontSize: 12.5, color: cs.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Switch(value: mono, onChanged: (v) => setMonochromeAvatars(v)),
+          ]),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
+    final cs = theme.colors;
     return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
-        ListTile(
-            onTap: () => _showSelectThemeDialog(context, theme),
-            leading: const Icon(Icons.color_lens_outlined),
-            title: const Text("Theme")),
-        ListTile(
-            onTap: () => _showSelectTextSizeDialog(context, theme),
-            leading: const Icon(Icons.text_increase),
-            title: const Text("Message font size")),
-        ValueListenableBuilder<bool>(
-          valueListenable: monochromeAvatars,
-          builder: (context, mono, _) => SwitchListTile(
-            secondary: const Icon(Icons.account_circle_outlined),
-            title: const Text("Monochrome avatars"),
-            subtitle: const Text(
-                "Use graphite fallback avatars instead of colored initials"),
-            value: mono,
-            onChanged: (v) => setMonochromeAvatars(v),
-          ),
-        ),
+        _sectionLabel("Display", cs),
+        _card(cs, [
+          _navRow(cs,
+              icon: Icons.palette_outlined,
+              title: "Theme",
+              value: appThemes[theme.getThemeMode()]?.descr,
+              onTap: () => _showSelectThemeDialog(context, theme)),
+          _divider(cs),
+          _navRow(cs,
+              icon: Icons.format_size,
+              title: "Message font size",
+              value:
+                  appFontSizes[appFontSizeKeyForScale(theme.fontScale)]?.descr,
+              onTap: () => _showSelectTextSizeDialog(context, theme)),
+          _divider(cs),
+          _switchRow(cs),
+        ]),
         if (kDebugMode) ...[
-          ListTile(
-              title: const Text("Widget Test Screen"),
-              onTap: () {
-                Navigator.of(context, rootNavigator: true)
-                    .pushNamed(ThemeTestScreen.routeName);
-              }),
-          ListTile(
-              title: const Text("Unset Unkx Members Notice Flag"),
-              onTap: () async {
-                await StorageManager.saveBool(
-                    StorageManager.notifiedGCUnkxdMembers, false);
-                if (context.mounted) showSuccessSnackbar(context, "Done");
-              })
-        ]
+          const SizedBox(height: 22),
+          _sectionLabel("Developer", cs),
+          _card(cs, [
+            _navRow(cs,
+                icon: Icons.science_outlined,
+                title: "Widget test screen",
+                onTap: () => Navigator.of(context, rootNavigator: true)
+                    .pushNamed(ThemeTestScreen.routeName)),
+            _divider(cs),
+            _navRow(cs,
+                icon: Icons.flag_outlined,
+                title: "Unset unkx members notice flag",
+                onTap: () async {
+                  await StorageManager.saveBool(
+                      StorageManager.notifiedGCUnkxdMembers, false);
+                  if (context.mounted) showSuccessSnackbar(context, "Done");
+                }),
+          ]),
+        ],
       ],
     );
   }

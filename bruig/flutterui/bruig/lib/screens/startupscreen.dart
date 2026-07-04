@@ -10,8 +10,17 @@ class StartupScreen extends StatelessWidget {
   final bool hideAboutButton;
   final Widget? fab;
   final double? childrenWidth;
+
+  // When true, shows the full-bleed portal background behind the content.
+  // Pass showPortal: false on any startup screen that should stay plain.
+  final bool showPortal;
+
   const StartupScreen(this.widgetList,
-      {this.hideAboutButton = false, this.fab, this.childrenWidth, super.key});
+      {this.hideAboutButton = false,
+      this.fab,
+      this.childrenWidth,
+      this.showPortal = true,
+      super.key});
 
   Widget _buildChildren() {
     return Column(
@@ -24,11 +33,42 @@ class StartupScreen extends StatelessWidget {
     return Scaffold(
         body: Consumer<ThemeNotifier>(
             builder: (context, theme, child) => Container(
-                decoration: const BoxDecoration(
-                    color: Color(0xFF060606)),
+                decoration: const BoxDecoration(color: Color(0xFF0E0E0E)),
                 child: Stack(children: [
+                  // Full-bleed portal background (static image -> painted once).
+                  if (showPortal) ...[
+                    Positioned.fill(
+                        child: ClipRect(
+                            child: Transform.scale(
+                      scale: 1.0,
+                      child: Image.asset(
+                        "assets/images/login_bg.png",
+                        fit: BoxFit.cover,
+                        alignment: Alignment.center,
+                        errorBuilder: (context, error, stack) =>
+                            const SizedBox.shrink(),
+                      ),
+                    ))),
+                    // Soft radial scrim: darkens the eye so the centered login
+                    // stays legible over the glow, fading out to reveal the rings.
+                    Positioned.fill(
+                        child: DecoratedBox(
+                            decoration: BoxDecoration(
+                                gradient: RadialGradient(
+                      center: Alignment.center,
+                      radius: 0.55,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.62),
+                        Colors.black.withValues(alpha: 0.30),
+                        Colors.black.withValues(alpha: 0.0),
+                      ],
+                      stops: const [0.0, 0.45, 0.8],
+                    )))),
+                  ],
                   Container(
-                      alignment: Alignment.center,
+                      alignment: showPortal
+                          ? const Alignment(0.0, -0.06)
+                          : Alignment.center,
                       padding: const EdgeInsets.all(30),
                       child: SingleChildScrollView(
                           child: childrenWidth != null

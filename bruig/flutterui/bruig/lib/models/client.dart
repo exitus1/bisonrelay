@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 
 import 'package:bruig/config.dart';
 import 'package:bruig/models/realtimechat.dart';
@@ -211,8 +212,84 @@ class ChatModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  ChatModel(this.id, this._nick, this.isGC);
+  final bool isNotes;
+  ChatModel(this.id, this._nick, this.isGC, {this.isNotes = false}) {
+    _loadPin();
+    if (isNotes) _loadNotes();
+  }
+
+  Future<void> _loadNotes() async {
+    final raw = await StorageManager.readData('notesToSelf') as String?;
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final List<dynamic> list = jsonDecode(raw);
+      for (final e in list) {
+        final m = PM(id, e['msg'] as String, true, e['ts'] as int);
+        append(ChatEventModel(m, null), true);
+      }
+    } catch (_) {}
+  }
+
+  void _persistNotes() {
+    final list = <Map<String, dynamic>>[];
+    for (final e in _msgs.reversed) {
+      final ev = e.event;
+      if (ev is PM) {
+        list.add({'msg': ev.msg, 'ts': ev.timestamp});
+      }
+    }
+    StorageManager.saveData('notesToSelf', jsonEncode(list));
+  }
   factory ChatModel.empty() => ChatModel("", "", false);
+
+  // Locally pinned message (persists via StorageManager, keyed by chat id).
+  String? _pinnedMsg;
+  String? _pinnedNick;
+  String? get pinnedMsg => _pinnedMsg;
+  String? get pinnedNick => _pinnedNick;
+
+  Future<void> _loadPin() async {
+    final m = await StorageManager.readData('pinnedmsg_$id') as String?;
+    final n = await StorageManager.readData('pinnednick_$id') as String?;
+    if (m != null && m.isNotEmpty) {
+      _pinnedMsg = m;
+      _pinnedNick = n;
+      notifyListeners();
+    }
+  }
+
+  void setPin(String nick, String msg) {
+    _pinnedMsg = msg;
+    _pinnedNick = nick;
+    StorageManager.saveData('pinnedmsg_$id', msg);
+    StorageManager.saveData('pinnednick_$id', nick);
+    notifyListeners();
+  }
+
+  void clearPin() {
+    _pinnedMsg = null;
+    _pinnedNick = null;
+    StorageManager.saveData('pinnedmsg_$id', '');
+    StorageManager.saveData('pinnednick_$id', '');
+    notifyListeners();
+  }
+
+  // Pending reply target (quoted message); null when not replying.
+  String? _replyToNick;
+  String? _replyToMsg;
+  String? get replyToNick => _replyToNick;
+  String? get replyToMsg => _replyToMsg;
+  void setReplyTo(String nick, String msg) {
+    _replyToNick = nick;
+    _replyToMsg = msg;
+    notifyListeners();
+  }
+
+  void clearReplyTo() {
+    _replyToNick = null;
+    _replyToMsg = null;
+    notifyListeners();
+  }
 
   bool isSubscribed = false;
 
@@ -483,8 +560,13 @@ class ChatModel extends ChangeNotifier {
       notifyListeners();
 
       try {
-        await Golib.pm(m);
-        evnt.sentState = CMS_sent;
+        if (isNotes) {
+          evnt.sentState = CMS_sent;
+          _persistNotes();
+        } else {
+          await Golib.pm(m);
+          evnt.sentState = CMS_sent;
+        }
       } catch (exception) {
         evnt.sendError = "$exception";
       }
@@ -780,6 +862,19 @@ class ClientModel extends ChangeNotifier {
   final ChatsListModel activeChats = ChatsListModel();
   final ChatsListModel hiddenChats = ChatsListModel();
 
+  // Count of messages the user has sent (persisted, climbs over time).
+  int _msgsSent = 0;
+  int get msgsSent => _msgsSent;
+
+  // Whether the relay counter is enabled (toggle in Settings > Account).
+  bool _countRelays = true;
+  bool get countRelays => _countRelays;
+  void setCountRelays(bool v) {
+    _countRelays = v;
+    StorageManager.saveData('countRelaysEnabled', v);
+    notifyListeners();
+  }
+
   // searchChats searches all chats that match the given string (both actice and
   // hidden).
   UnmodifiableListView<ChatModel> searchChats(
@@ -956,11 +1051,31 @@ class ClientModel extends ChangeNotifier {
     }
   }
 
+  static const notesChatID = "_notes_to_self_";
+  static const _notesAvatarB64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAEu0lEQVR42u3dQWpbMRSGUUl0Rx4YvIVCyVJLoVsweOA1uaNOSih5fvKzpP+cFcRu7qerlzitJcDpcn4U2Oh+vdXVX2M16JAbhmrgITcI1dBDbgyqoYfcGFSDD7khqIYecmNQDT7khqAZfsj9nq/eBMjdBqrBh9wQNMMPudeCZvghNwLV4EPulaAZfsjdBprhh9wINMMPuRFohh9yI1ANPsyl58PBZvghdxto3k7I1SUATn+Ycwtohh9yI9AMP+RGoBl+yI1AM/yQGwE/BYBgmwPg9Id1toBm+CE3As3wQ24EPAMAzwCc/pC4BdgAwAbg9IfELaAZfsiNgCsAuAI4/SFxC7ABgA0AEADrP0RdA2wAYANw+kPiFmADABsAEB8A6z9kXQNsAGADAKIDYP2HvGuADQBsAIAAAHkBcP+HzOcANgBwBQAEABAAQACAxVU/AQAbACAAgAAAAgAIACAAgAAAAgDM75u34Hi/f/6a+uv//vHDP6IAkDb4CAAGH88AMPwIAIZf5AQAQyECAoDoeRMEgORBEAEBQAC9CQLgm9/7gAAgAggAIoAAIAIIACKAACACCAAigAAgAggAIoAAIAIIACKAACACCAAigAAgAggAIoAAIAIIACKAACACCAAigAAgAvyH/xqM3fxnoQKAwUIAMPh4BgDYAHD6f2bvQz0bkg0AEABAAKzHXh8CAGzjIeDAp+RKD7uc/AKAocEVABAAQAAAAQAEABAAQAAAAQAEABAAQAAAAQB28GGggfk0IAJg8Jd6TULgCgAIACmnf9LrEwBAAAABYCN/FRgBAA7hx4ADn5J+DwABEAJwBQAEABAAQAAAAQAEABAAQAAAAQAEABAAQACAUooPAw3NpwERAIO/1GsSAlcAQABIOf2TXp8AAAIACAAb+avACABwCD8GHPiU9HsACIAQgCsAIACAAAACAAgAIACAAAACAAgAIACAAAACAJRSfBhoaCN8GtAHkgSAwMH/92sRAlcAQABIOf1n+LoQAEAAAAGY3KgP2zwEFABgMX4MOPBp6/cAEAAhAFcAQAAAAQAEABAAQAAAAQAEABAAQAAAAXg9fzjD+ysAgAA4pfC+CgAgAE4rvJ8C4JsW76MA+ObF+/d+9XQ5P7wNx/AXfgy+ACAEBl8AAM8AAAEABAAQAEAAAAEABADoH4D79Va9DZDnfr1VGwC4AgACAAgAIABAQgD8JACy/J15GwC4AgACAGQGwHMAyLr/2wDABgAIgGsARK3/NgCwAQAC4BoAUeu/DQBsAF8rBbDW6W8DABsAIACuARC1/tsAwAbwXDmAuU//L20AIgBrDr8rALgC9CkJMNfpbwMAG0DfogBznP6bNwARgHWG/6krgAjAGsPvGQB4BnBMaYCxTv9dG4AIwNzDv/sKIAIw7/B3eQYgAjDn8HcJgAjAnMPfLQDAnLoFwBYAc53+pZTykqE9Xc4P/0ww7uC/9ApgG4A5ZqrN9gWD4Z8gACIA489Qm/0FgOF/3qHD6eEgjHVotlVfGBj+wQIgAjDWbLx1GF0J4L2H4hCnsRBg8N+jeSMg93t+uMGzDWDwgwMgBhh6ARACDL4AiAGGXgDEAEMvAIKAgRcAYcCgd/IHedrUpM18xg8AAAAASUVORK5CYII=";
+
+  // ensureNotesChat creates the local-only "Notes to self" chat if missing and
+  // adds it to the chat list. It behaves like a normal chat (floats by recency).
+  void ensureNotesChat() {
+    if (_activeChats.containsKey(notesChatID)) return;
+    var c = ChatModel(notesChatID, "Notes to self", false, isNotes: true);
+    _activeChats[notesChatID] = c;
+    c.avatar.loadAvatar(base64Decode(_notesAvatarB64));
+    activeChats._addInactive(c);
+    activeChats._sort();
+  }
+
   // newSentMsg marks the chat as having sent a message and reorders the list
   // of chats.
   Future<void> newSentMsg(ChatModel chat) async {
     activeChats._addActive(chat);
     hiddenChats._remove(chat);
+    if (_countRelays) {
+      _msgsSent += 1;
+      StorageManager.saveData('msgsSentCount', _msgsSent);
+      notifyListeners();
+    }
   }
 
   final Map<String, ChatModel> _activeChats = {};
@@ -1293,6 +1408,15 @@ class ClientModel extends ChangeNotifier {
       if (value != null && value.length > 0) {
         _savedHiddenChats = value;
       }
+    });    await StorageManager.readData('msgsSentCount').then((value) {
+      if (value != null) {
+        _msgsSent = (value as num).toInt();
+      }
+    });
+    await StorageManager.readData('countRelaysEnabled').then((value) {
+      if (value is bool) {
+        _countRelays = value;
+      }
     });
     var info = await Golib.getLocalInfo();
     _publicID = info.id;
@@ -1308,6 +1432,8 @@ class ClientModel extends ChangeNotifier {
     for (var v in gcs) {
       await _newChat(v.id, v.name, true, gcAB: v);
     }
+
+    ensureNotesChat();
 
     // Re-sort list of chats.
     activeChats._sort();

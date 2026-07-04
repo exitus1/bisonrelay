@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 
 class ShowProfileModel extends BoolFlagModel {}
 
+class ChatSearchModel extends BoolFlagModel {}
+
 class CreateGroupChatModel extends BoolFlagModel {}
 
 class ChatSideMenuActiveModel extends ChangeNotifier {
@@ -67,6 +69,7 @@ class OverviewActivePath extends ChangeNotifier {
 // UIStateModel holds state related to the app's UI.
 class UIStateModel {
   final ShowProfileModel showProfile = ShowProfileModel();
+  final ChatSearchModel chatSearch = ChatSearchModel();
   final ChatSideMenuActiveModel chatSideMenuActive = ChatSideMenuActiveModel();
   final SettingsTitleModel settingsTitle = SettingsTitleModel();
   final SmallScreenActiveTabModel smallScreenActiveTab =

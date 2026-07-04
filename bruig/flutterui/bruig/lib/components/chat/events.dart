@@ -128,7 +128,7 @@ class ReceivedSentPM extends StatefulWidget {
 }
 
 class _ReceivedSentPMState extends State<ReceivedSentPM> {
-  final ContextMenuController _contextMenuController = ContextMenuController();
+
   void eventChanged() => setState(() {});
 
   @override
@@ -166,56 +166,40 @@ class _ReceivedSentPMState extends State<ReceivedSentPM> {
     showSuccessSnackbar(context, "Copied \"$textMsg\" to clipboard");
   }
 
+  void _showMsgMenu(Offset pos, String msg, String nick) async {
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final local = overlay.globalToLocal(pos);
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(local.dx, local.dy, 0, 0),
+        Offset.zero & overlay.size,
+      ),
+      items: const [
+        PopupMenuItem<String>(value: 'reply', child: Text('Reply')),
+        PopupMenuItem<String>(value: 'pin', child: Text('Pin')),
+        PopupMenuItem<String>(value: 'copy', child: Text('Copy')),
+      ],
+    );
+    if (!mounted) return;
+    if (selected == 'reply') {
+      widget.chat.setReplyTo(nick, msg);
+    } else if (selected == 'pin') {
+      widget.chat.setPin(nick, msg);
+    } else if (selected == 'copy') {
+      copy(context, msg);
+    }
+  }
+
   void messageSecondaryTapContext(
       TapDownDetails details, String msg, String fullDate, String nick) {
-    var toCopy = msg;
-    _contextMenuController.show(
-      context: context,
-      contextMenuBuilder: (context) {
-        return AdaptiveTextSelectionToolbar.buttonItems(
-          anchors: TextSelectionToolbarAnchors(
-            primaryAnchor: details.globalPosition,
-          ),
-          buttonItems: [
-            ContextMenuButtonItem(
-              onPressed: () {
-                copy(context, toCopy);
-                _contextMenuController.remove();
-                //.hide();
-                // Handle custom action
-              },
-              label: 'Copy',
-            ),
-          ],
-        );
-      },
-    );
+    _showMsgMenu(details.globalPosition, msg, nick);
   }
 
   void messageLongDownContext(
       LongPressDownDetails details, String msg, String fullDate, String nick) {
-    var toCopy = msg;
-    _contextMenuController.show(
-      context: context,
-      contextMenuBuilder: (context) {
-        return AdaptiveTextSelectionToolbar.buttonItems(
-          anchors: TextSelectionToolbarAnchors(
-            primaryAnchor: details.globalPosition,
-          ),
-          buttonItems: [
-            ContextMenuButtonItem(
-              onPressed: () {
-                copy(context, toCopy);
-                _contextMenuController.remove();
-                //.hide();
-                // Handle custom action
-              },
-              label: 'Copy',
-            ),
-          ],
-        );
-      },
-    );
+    _showMsgMenu(details.globalPosition, msg, nick);
   }
 
   Widget buildMessage(BuildContext context) {
@@ -243,6 +227,10 @@ class _ReceivedSentPMState extends State<ReceivedSentPM> {
         "  \n"); // Replace newlines with <space space newline> for proper md render
 
     var isOwnMessage = widget.userNick == widget.nick;
+
+    // Image-only messages render bare (no bubble fill/border/padding).
+    var isImageOnly = RegExp(r'^--embed\[[^\]]*type=image/[^\]]*\]--$')
+        .hasMatch(msg.trim());
 
     // List<Widget> getMessage(BuildContext context) {
     //   return <Widget>[
@@ -312,12 +300,16 @@ class _ReceivedSentPMState extends State<ReceivedSentPM> {
                                     : MediaQuery.sizeOf(context).width * 0.4,
                               ),
                               child: Container(
-                                  padding: const EdgeInsets.only(
-                                      top: 5, left: 10, right: 10, bottom: 5),
-                                  decoration: BoxDecoration(
+                                  padding: isImageOnly
+                                      ? EdgeInsets.zero
+                                      : const EdgeInsets.only(
+                                          top: 5, left: 10, right: 10, bottom: 5),
+                                  decoration: isImageOnly
+                                      ? null
+                                      : BoxDecoration(
                                     color: isOwnMessage
                                         ? const Color(0xFF23262B)
-                                        : const Color(0xFF111311),
+                                        : const Color(0xFF1E211E),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: isOwnMessage
