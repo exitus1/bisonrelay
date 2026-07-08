@@ -796,8 +796,12 @@ class _PostContentScreenForArgsState extends State<_PostContentScreenForArgs> {
         child: Stack(alignment: Alignment.topLeft, children: [
           SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child:
-                  Column(mainAxisAlignment: MainAxisAlignment.start, children: [
+              child: Center(
+                  child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 780),
+                      child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
                 const SizedBox(height: 10),
 
                 // Post Area
@@ -806,9 +810,9 @@ class _PostContentScreenForArgsState extends State<_PostContentScreenForArgs> {
                         ? const EdgeInsets.only(
                             left: 19, right: 10, top: 0, bottom: 0)
                         : const EdgeInsets.only(
-                            left: 50, right: 50, top: 0, bottom: 0),
+                            left: 0, right: 0, top: 0, bottom: 0),
                     borderRadius: BorderRadius.circular(3),
-                    color: SurfaceColor.secondaryContainer,
+                    color: SurfaceColor.surface,
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
@@ -887,7 +891,7 @@ class _PostContentScreenForArgsState extends State<_PostContentScreenForArgs> {
                 // Comments section
                 ...commentsWidgets,
                 ...receiveReceiptsWidgets,
-              ])),
+              ])))),
 
           // Back button on desktop.
           if (!isScreenSmall)

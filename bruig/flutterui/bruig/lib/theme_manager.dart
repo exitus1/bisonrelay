@@ -681,6 +681,11 @@ class ThemeNotifier with ChangeNotifier {
     _fontScale = double.parse(fontScaleCfg ?? "0");
     var themeModeCfg =
         await StorageManager.readData(StorageManager.themeModeKey);
+    _squareBubbles =
+        (await StorageManager.readData("squareBubbles")) == "true";
+    _leftAlignMessages =
+        (await StorageManager.readData("leftAlignMessages")) == "true";
+    _narrowChat = (await StorageManager.readData("narrowChat")) == "true";
     switchTheme(themeModeCfg ?? _defaultThemeName);
   }
 
@@ -744,6 +749,30 @@ class ThemeNotifier with ChangeNotifier {
     _fontScale = fs;
     StorageManager.saveData(StorageManager.fontScaleKey, fs.toString());
     _clearTxtStyleCache();
+    notifyListeners();
+  }
+
+  bool _squareBubbles = false;
+  bool get squareBubbles => _squareBubbles;
+  void setSquareBubbles(bool v) {
+    _squareBubbles = v;
+    StorageManager.saveData("squareBubbles", v.toString());
+    notifyListeners();
+  }
+
+  bool _leftAlignMessages = false;
+  bool get leftAlignMessages => _leftAlignMessages;
+  void setLeftAlignMessages(bool v) {
+    _leftAlignMessages = v;
+    StorageManager.saveData("leftAlignMessages", v.toString());
+    notifyListeners();
+  }
+
+  bool _narrowChat = false;
+  bool get narrowChat => _narrowChat;
+  void setNarrowChat(bool v) {
+    _narrowChat = v;
+    StorageManager.saveData("narrowChat", v.toString());
     notifyListeners();
   }
 

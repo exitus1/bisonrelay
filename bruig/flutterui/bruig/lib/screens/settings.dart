@@ -815,6 +815,38 @@ class _AppearanceSettingsScreenState extends State<AppearanceSettingsScreen> {
         ),
       );
 
+  Widget _toggleRow(ColorScheme cs,
+          {required IconData icon,
+          required String title,
+          required String subtitle,
+          required bool value,
+          required ValueChanged<bool> onChanged}) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(children: [
+          _iconChip(icon, cs),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurface)),
+                const SizedBox(height: 2),
+                Text(subtitle,
+                    style:
+                        TextStyle(fontSize: 12.5, color: cs.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch(value: value, onChanged: onChanged),
+        ]),
+      );
+
   Widget _switchRow(ColorScheme cs) => ValueListenableBuilder<bool>(
         valueListenable: monochromeAvatars,
         builder: (context, mono, _) => Padding(
@@ -867,6 +899,36 @@ class _AppearanceSettingsScreenState extends State<AppearanceSettingsScreen> {
               onTap: () => _showSelectTextSizeDialog(context, theme)),
           _divider(cs),
           _switchRow(cs),
+            _divider(cs),
+            _toggleRow(cs,
+                icon: Icons.crop_square,
+                title: "Square chat bubbles",
+                subtitle: "Squared-off corners instead of rounded",
+                value: theme.squareBubbles,
+                onChanged: (v) {
+                  theme.setSquareBubbles(v);
+                  setState(() {});
+                }),
+            _divider(cs),
+            _toggleRow(cs,
+                icon: Icons.format_align_left,
+                title: "Left-align messages",
+                subtitle: "Stack all messages in one column (Option A)",
+                value: theme.leftAlignMessages,
+                onChanged: (v) {
+                  theme.setLeftAlignMessages(v);
+                  setState(() {});
+                }),
+            _divider(cs),
+            _toggleRow(cs,
+                icon: Icons.view_column_outlined,
+                title: "Narrow conversation",
+                subtitle: "Pull messages into a centered column (Option B)",
+                value: theme.narrowChat,
+                onChanged: (v) {
+                  theme.setNarrowChat(v);
+                  setState(() {});
+                }),
         ]),
         if (kDebugMode) ...[
           const SizedBox(height: 22),

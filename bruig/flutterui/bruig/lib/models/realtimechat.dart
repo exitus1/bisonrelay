@@ -138,6 +138,15 @@ class RTDTSessionModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _localHasSound = false;
+  bool get localHasSound => _localHasSound;
+  void _setLocalHasSound(bool v) {
+    if (_localHasSound != v) {
+      _localHasSound = v;
+      notifyListeners();
+    }
+  }
+
   void _removedFromSession() {
     _hasHotAudio = false;
     _inLiveSession = false;
@@ -569,20 +578,25 @@ class RealtimeChatModel extends ChangeNotifier {
         continue;
       }
 
-      var peer = sess._getOrNewLivePeer(updt.update.peerId);
-      switch (updt.ntfType) {
-        case NTRTDTLivePeerJoined:
-          peer._setIsLive(true);
-          break;
+      if (updt.ntfType == NTRTDTPeerSoundChanged &&
+          updt.update.peerId == sess._info.localPeerID) {
+        sess._setLocalHasSound(updt.update.hasSound);
+      } else {
+        var peer = sess._getOrNewLivePeer(updt.update.peerId);
+        switch (updt.ntfType) {
+          case NTRTDTLivePeerJoined:
+            peer._setIsLive(true);
+            break;
 
-        case NTRTDTLivePeerStalled:
-          peer._setIsLive(false);
-          break;
+          case NTRTDTLivePeerStalled:
+            peer._setIsLive(false);
+            break;
 
-        case NTRTDTPeerSoundChanged:
-          peer._setHasSoundAndStream(
-              updt.update.hasSound, updt.update.hasSoundStream);
-          break;
+          case NTRTDTPeerSoundChanged:
+            peer._setHasSoundAndStream(
+                updt.update.hasSound, updt.update.hasSoundStream);
+            break;
+        }
       }
     }
   }

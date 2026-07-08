@@ -270,6 +270,36 @@ class _RTCSessionHeaderState extends State<RTCSessionHeader> {
                       ? Txt.S("RTT ${rtt.lastRTTNanoStr}")
                       : const Empty())
             ],
+            if (session.inLiveSession) ...[
+              SizedBox(width: isSmallScreen ? 8 : 16),
+              Tooltip(
+                message:
+                    "Leave the live session before closing Bison Relay. "
+                    "Shutting down mid-session can disrupt your Lightning "
+                    "Network channels.",
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2410),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFF5A4A1E)),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        size: 16, color: Color(0xFFE0B33A)),
+                    if (!isSmallScreen) ...[
+                      const SizedBox(width: 7),
+                      const Text("Leave session before closing BR",
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              color: Color(0xFFE0B33A),
+                              fontWeight: FontWeight.w500)),
+                    ],
+                  ]),
+                ),
+              ),
+            ],
           ])),
       ContextMenu(
         handleItemTap: (v) {

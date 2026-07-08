@@ -447,6 +447,8 @@ class _ActiveRealtimeChatScreenState extends State<ActiveRealtimeChatScreen> {
 
           if (!session.inLiveSession) ...[
             const SizedBox(height: 14),
+            _AudioTestPanel(audio: widget.audio),
+            const SizedBox(height: 14),
             const LNInfoSectionHeader("Session Members"),
             ...publishers.map((pub) => _RealtimeSessionPublisherW(
                 client: rtc.client,
@@ -481,6 +483,188 @@ class _ActiveRealtimeChatScreenState extends State<ActiveRealtimeChatScreen> {
   }
 }
 
+// Pre-join mic + speaker test: pick devices, record a clip, play it back.
+class _AudioTestPanel extends StatefulWidget {
+  final AudioModel audio;
+  const _AudioTestPanel({required this.audio});
+  @override
+  State<_AudioTestPanel> createState() => _AudioTestPanelState();
+}
+
+class _AudioTestPanelState extends State<_AudioTestPanel> {
+  List<dynamic> _capture = [];
+  List<dynamic> _playback = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final devs = await Golib.listAudioDevices();
+      if (mounted) {
+        setState(() {
+          _capture = devs.capture;
+          _playback = devs.playback;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Widget _deviceRow(IconData ic, String hint, List<dynamic> devices,
+      String currentId, ValueChanged<String> onPick) {
+    final hasCurrent = devices.any((d) => d.id == currentId);
+    return Row(children: [
+      Icon(ic, size: 18, color: const Color(0xFF9AA3A0)),
+      const SizedBox(width: 10),
+      Expanded(
+        child: devices.isEmpty
+            ? Text(hint,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF9AA3A0)))
+            : DropdownButton<String>(
+                value: hasCurrent ? currentId : null,
+                isExpanded: true,
+                isDense: true,
+                underline: const SizedBox(),
+                dropdownColor: const Color(0xFF15171A),
+                hint: Text(hint,
+                    style: const TextStyle(
+                        fontSize: 13, color: Color(0xFF9AA3A0))),
+                style: const TextStyle(fontSize: 13, color: Color(0xFFF2F4F3)),
+                items: devices
+                    .map<DropdownMenuItem<String>>((d) => DropdownMenuItem(
+                          value: d.id as String,
+                          child: Text(d.name as String,
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) onPick(v);
+                },
+              ),
+      ),
+    ]);
+  }
+
+  Widget _testBtn(
+      {required IconData icon,
+      required String label,
+      required Color color,
+      required VoidCallback onTap,
+      bool enabled = true}) {
+    return Opacity(
+      opacity: enabled ? 1 : 0.4,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled ? onTap : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            color: const Color(0xFF141614),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF23262B)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 7),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600, color: color)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final audio = widget.audio;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0C0D0C),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF1C1F1D)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.tune, size: 17, color: Color(0xFF1DFF8C)),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text("Test audio and microphone prior to joining",
+                style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFF2F4F3))),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        _deviceRow(Icons.mic, "Default microphone", _capture,
+            audio.captureDeviceId, (v) => audio.captureDeviceId = v),
+        const SizedBox(height: 8),
+        _deviceRow(Icons.headphones, "Default speakers", _playback,
+            audio.playbackDeviceId, (v) => audio.playbackDeviceId = v),
+        const SizedBox(height: 12),
+        AnimatedBuilder(
+          animation: audio,
+          builder: (context, _) {
+            final recording = audio.recording;
+            final playing = audio.playing;
+            final hasRecord = audio.hasRecord;
+            return Row(children: [
+              _testBtn(
+                icon: recording ? Icons.stop : Icons.fiber_manual_record,
+                label: recording ? "Stop" : "Record",
+                color: recording
+                    ? const Color(0xFFFF6B6B)
+                    : const Color(0xFF1DFF8C),
+                onTap: () async {
+                  try {
+                    if (recording) {
+                      await audio.stop();
+                    } else {
+                      audio.recordNote();
+                    }
+                  } catch (_) {}
+                },
+              ),
+              const SizedBox(width: 10),
+              _testBtn(
+                icon: playing ? Icons.stop : Icons.play_arrow,
+                label: playing ? "Stop" : "Play back",
+                color: const Color(0xFF4D9FFF),
+                enabled: hasRecord && !recording,
+                onTap: () async {
+                  try {
+                    if (playing) {
+                      await audio.stop();
+                    } else {
+                      await audio.playbackNote();
+                    }
+                  } catch (_) {}
+                },
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                    recording
+                        ? "Recording... speak, then Stop"
+                        : hasRecord
+                            ? "Play back to hear yourself"
+                            : "Record a clip, then play it back",
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF9AA3A0))),
+              ),
+            ]);
+          },
+        ),
+      ]),
+    );
+  }
+}
+
 // ============================ Live session stage =============================
 
 // Rich "stage" shown while in a live session: session timer + connection
@@ -507,6 +691,7 @@ class _LiveStageState extends State<_LiveStage>
   Duration _elapsed = Duration.zero;
   Timer? _timer;
   List<dynamic> _captureDevices = [];
+  List<dynamic> _playbackDevices = [];
   late final AnimationController _pulse;
 
   RTDTSessionModel get session => widget.session;
@@ -532,7 +717,12 @@ class _LiveStageState extends State<_LiveStage>
   Future<void> _loadDevices() async {
     try {
       final devs = await Golib.listAudioDevices();
-      if (mounted) setState(() => _captureDevices = devs.capture);
+      if (mounted) {
+        setState(() {
+          _captureDevices = devs.capture;
+          _playbackDevices = devs.playback;
+        });
+      }
     } catch (_) {}
   }
 
@@ -560,15 +750,7 @@ class _LiveStageState extends State<_LiveStage>
     return 1;
   }
 
-  bool get _localHasSound {
-    try {
-      final pub = session.info.metadata.publishers
-          .firstWhere((p) => p.publisherID == widget.client.publicID);
-      return session.livePeer(pub.peerID)?.hasSound ?? false;
-    } catch (_) {
-      return false;
-    }
-  }
+  bool get _localHasSound => session.localHasSound;
 
   @override
   Widget build(BuildContext context) {
@@ -618,7 +800,13 @@ class _LiveStageState extends State<_LiveStage>
           runSpacing: 18,
           alignment: WrapAlignment.center,
           children: pubs.map((pub) {
-            final speaking = session.livePeer(pub.peerID)?.hasSound ?? false;
+            final peer = session.livePeer(pub.peerID);
+            final isMe = pub.publisherID == widget.client.publicID;
+            final speaking =
+                isMe ? session.localHasSound : (peer?.hasSound ?? false);
+            final muted = isMe
+                ? !session.hasHotAudio
+                : (peer != null && !peer.hasSoundStream);
             var nick = widget.client.getNick(pub.publisherID);
             if (nick == "") nick = pub.alias;
             return _StageAvatar(
@@ -626,6 +814,7 @@ class _LiveStageState extends State<_LiveStage>
                 uid: pub.publisherID,
                 nick: nick,
                 speaking: speaking,
+                muted: muted,
                 pulse: _pulse);
           }).toList(),
         ),
@@ -644,6 +833,8 @@ class _LiveStageState extends State<_LiveStage>
             hot: session.hasHotAudio,
             active: _localHasSound,
             pulse: _pulse),
+        const SizedBox(height: 10),
+        _SpeakerPanel(audio: widget.audio, devices: _playbackDevices),
       ]),
     );
   }
@@ -687,12 +878,14 @@ class _StageAvatar extends StatelessWidget {
   final String uid;
   final String nick;
   final bool speaking;
+  final bool muted;
   final AnimationController pulse;
   const _StageAvatar(
       {required this.client,
       required this.uid,
       required this.nick,
       required this.speaking,
+      required this.muted,
       required this.pulse});
 
   @override
@@ -702,7 +895,8 @@ class _StageAvatar extends StatelessWidget {
         animation: pulse,
         builder: (context, _) {
           final t = speaking ? pulse.value : 0.0;
-          return Container(
+          return Stack(children: [
+            Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
@@ -724,7 +918,24 @@ class _StageAvatar extends StatelessWidget {
                   : null,
             ),
             child: UserAvatarFromID(client, uid, radius: 34),
-          );
+          ),
+            if (muted)
+              Positioned(
+                right: 2,
+                bottom: 2,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF2A1416),
+                    border:
+                        Border.all(color: const Color(0xFF0C0D0C), width: 2),
+                  ),
+                  child: const Icon(Icons.mic_off,
+                      size: 14, color: Color(0xFFFF6B6B)),
+                ),
+              ),
+          ]);
         },
       ),
       const SizedBox(height: 10),
@@ -732,8 +943,12 @@ class _StageAvatar extends StatelessWidget {
           style: const TextStyle(
               fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFFF2F4F3))),
       const SizedBox(height: 2),
-      Text(speaking ? "speaking" : "",
-          style: const TextStyle(fontSize: 11.5, color: Color(0xFF1DFF8C))),
+      Text(speaking ? "speaking" : (muted ? "muted" : ""),
+          style: TextStyle(
+              fontSize: 11.5,
+              color: speaking
+                  ? const Color(0xFF1DFF8C)
+                  : const Color(0xFFFF6B6B))),
     ]);
   }
 }
@@ -799,6 +1014,58 @@ class _MicPanel extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         _MicActivityBars(active: hot && active, pulse: pulse),
+      ]),
+    );
+  }
+}
+
+// Output (headphones/speakers) device picker.
+class _SpeakerPanel extends StatelessWidget {
+  final AudioModel audio;
+  final List<dynamic> devices;
+  const _SpeakerPanel({required this.audio, required this.devices});
+
+  @override
+  Widget build(BuildContext context) {
+    final currentId = audio.playbackDeviceId;
+    final hasCurrent = devices.any((d) => d.id == currentId);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0E100E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF1F231F)),
+      ),
+      child: Row(children: [
+        const Icon(Icons.headphones, size: 20, color: Color(0xFF9AA3A0)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: devices.isEmpty
+              ? const Text("Default speakers",
+                  style: TextStyle(fontSize: 13.5, color: Color(0xFF9AA3A0)))
+              : DropdownButton<String>(
+                  value: hasCurrent ? currentId : null,
+                  isExpanded: true,
+                  isDense: true,
+                  underline: const SizedBox(),
+                  dropdownColor: const Color(0xFF15171A),
+                  hint: const Text("Default speakers",
+                      style:
+                          TextStyle(fontSize: 13.5, color: Color(0xFF9AA3A0))),
+                  style: const TextStyle(
+                      fontSize: 13.5, color: Color(0xFFF2F4F3)),
+                  items: devices
+                      .map<DropdownMenuItem<String>>((d) => DropdownMenuItem(
+                            value: d.id as String,
+                            child: Text(d.name as String,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) audio.playbackDeviceId = v;
+                  },
+                ),
+        ),
       ]),
     );
   }

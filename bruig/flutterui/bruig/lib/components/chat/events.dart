@@ -248,14 +248,21 @@ class _ReceivedSentPMState extends State<ReceivedSentPM> {
     var showAvatar = !widget.evnt.showAvatar && !isOwnMessage && !isScreenSmall;
     var showNick = !(widget.evnt.sameUser || isOwnMessage) && !isScreenSmall;
 
-    return Consumer<ThemeNotifier>(
+    return LayoutBuilder(
+        builder: (context, constraints) => Consumer<ThemeNotifier>(
         builder: (context, theme, _) => Container(
-            margin: EdgeInsets.only(
-                top: widget.evnt.sameUser ? 2 : 10,
-                right: isOwnMessage ? 20 : 0),
+            margin: EdgeInsets.fromLTRB(
+                0,
+                widget.evnt.sameUser ? 2 : 10,
+                theme.narrowChat
+                    ? (constraints.maxWidth > 700
+                        ? constraints.maxWidth * 0.32
+                        : 20)
+                    : ((isOwnMessage && !theme.leftAlignMessages) ? 20 : 0),
+                0),
             child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: isOwnMessage
+                mainAxisAlignment: (isOwnMessage && !theme.leftAlignMessages)
                     ? MainAxisAlignment.end
                     : MainAxisAlignment.start,
                 children: <Widget>[
@@ -310,7 +317,8 @@ class _ReceivedSentPMState extends State<ReceivedSentPM> {
                                     color: isOwnMessage
                                         ? const Color(0xFF23262B)
                                         : const Color(0xFF1E211E),
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(
+                                        theme.squareBubbles ? 4 : 12),
                                     border: Border.all(
                                       color: isOwnMessage
                                           ? const Color(0xFF2C6BED)
@@ -345,7 +353,7 @@ class _ReceivedSentPMState extends State<ReceivedSentPM> {
                                                     color: TextColor
                                                         .onSurfaceVariant)))
                                       ])))))
-                ])));
+                ]))));
   }
 
   @override

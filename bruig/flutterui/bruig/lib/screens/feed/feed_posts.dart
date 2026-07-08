@@ -239,6 +239,7 @@ class _FeedPostWState extends State<FeedPostW> {
                             : "${_commentCount!} ${_commentCount == 1 ? "comment" : "comments"}",
                         style: const TextStyle(
                             fontSize: 12.5, color: Color(0xFF9AA3A0))),
+
                     if (hasUnreadComments) ...[
                       const SizedBox(width: 9),
                       Container(
@@ -284,11 +285,29 @@ class _FeedPostWState extends State<FeedPostW> {
                             padding: EdgeInsets.symmetric(
                                 horizontal: 4, vertical: 2),
                             child: Icon(Icons.bolt,
-                                size: 18, color: Color(0xFF5F6764)),
+                                size: 18, color: Color(0xFF4D9FFF)),
                           ),
                         ),
                       ),
                     if (!mine) const SizedBox(width: 4),
+                      Tooltip(
+                        message: "Quote post",
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            widget.feed.newPost.content =
+                                "\n\n--embed[type=quote,from=${widget.post.summ.authorID},post=${widget.post.summ.id}]--\n";
+                            widget.onTabChange(3, null);
+                          },
+                          child: const Padding(
+                            padding:
+                                EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            child: Icon(Icons.repeat,
+                                size: 18, color: Color(0xFF5F6764)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
                     ListenableBuilder(
                       listenable: FeedBookmarks.instance,
                       builder: (context, _) {
@@ -514,13 +533,21 @@ class _FeedPostsState extends State<FeedPosts> {
         // crossAxisAlignment.stretch gives children a bounded height so the
         // inner ListView lays out correctly.
         List<Widget> rowChildren;
-        if (c.maxWidth >= 900) {
+        if (c.maxWidth >= 1400) {
           rowChildren = [
             const Spacer(),
             SizedBox(width: 260, child: panel),
-            const SizedBox(width: 12),
-            SizedBox(width: 600, child: feedColumn),
+            const SizedBox(width: 48),
+            SizedBox(width: 780, child: feedColumn),
+            const SizedBox(width: 308),
             const Spacer(),
+          ];
+        } else if (c.maxWidth >= 900) {
+          rowChildren = [
+            const SizedBox(width: 16),
+            SizedBox(width: 260, child: panel),
+            const SizedBox(width: 48),
+            Expanded(child: feedColumn),
           ];
         } else if (c.maxWidth >= 600) {
           rowChildren = [
